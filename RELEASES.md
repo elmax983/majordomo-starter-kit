@@ -83,7 +83,7 @@ changes.
    ```
 
 4. Push the tag. The GitHub Actions workflow `.github/workflows/release.yml`
-   runs the checks and creates the release from `RELEASES.md` automatically:
+   runs the checks and creates the release from `docs/release-notes.md` automatically:
 
    ```sh
    git push origin main
