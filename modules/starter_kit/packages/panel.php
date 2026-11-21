@@ -17,6 +17,10 @@ return array(
     'requires' => array('basic_entities', 'scenes', 'scripts'),
     'title_key' => 'STARTER_KIT_PKG_PANEL_TITLE',
     'description_key' => 'STARTER_KIT_PKG_PANEL_DESC',
+    'hints' => array(
+        'shows' => 'STARTER_KIT_HINT_PANEL_SHOWS',
+        'adapt' => 'STARTER_KIT_HINT_PANEL_ADAPT'
+    ),
     'texts' => array(
         'PANEL_TITLE' => 'STARTER_KIT_TEXT_PANEL_TITLE',
         'PANEL_INTRO' => 'STARTER_KIT_TEXT_PANEL_INTRO',

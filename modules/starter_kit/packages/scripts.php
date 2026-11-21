@@ -21,6 +21,10 @@ return array(
     'requires' => array('basic_entities'),
     'title_key' => 'STARTER_KIT_PKG_SCRIPTS_TITLE',
     'description_key' => 'STARTER_KIT_PKG_SCRIPTS_DESC',
+    'hints' => array(
+        'shows' => 'STARTER_KIT_HINT_SCRIPTS_SHOWS',
+        'adapt' => 'STARTER_KIT_HINT_SCRIPTS_ADAPT'
+    ),
     'texts' => array(
         'SCRIPTS_DESC' => 'STARTER_KIT_TEXT_SCRIPTS_DESC',
         'SCRIPTS_OBJ_DESC' => 'STARTER_KIT_TEXT_SCRIPTS_OBJ_DESC',

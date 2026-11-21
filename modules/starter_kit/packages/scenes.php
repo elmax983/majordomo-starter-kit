@@ -16,6 +16,10 @@ return array(
     'requires' => array('basic_entities'),
     'title_key' => 'STARTER_KIT_PKG_SCENES_TITLE',
     'description_key' => 'STARTER_KIT_PKG_SCENES_DESC',
+    'hints' => array(
+        'shows' => 'STARTER_KIT_HINT_SCENES_SHOWS',
+        'adapt' => 'STARTER_KIT_HINT_SCENES_ADAPT'
+    ),
     'texts' => array(
         'SCENE_DESC' => 'STARTER_KIT_TEXT_SCENE_DESC',
         'SCENE_OBJ_DESC' => 'STARTER_KIT_TEXT_SCENE_OBJ_DESC',

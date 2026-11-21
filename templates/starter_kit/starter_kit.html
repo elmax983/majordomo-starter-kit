@@ -27,7 +27,17 @@
                     <td><input type="checkbox" name="pkg[]" value="[#ID#]"></td>
                     <td>
                         <b>[#TITLE#]</b>
+                        <span class="small text-muted">v[#VERSION#]</span>
+                        [#if UPDATE_AVAILABLE="1"#]
+                        <span class="label label-warning"><#LANG_STARTER_KIT_UPDATE_AVAILABLE#> [#INSTALLED_VERSION#] &rarr; [#VERSION#]</span>
+                        [#endif#]
                         <div class="text-muted">[#DESCRIPTION#]</div>
+                        [#if SHOW_HINT#]
+                        <div class="small"><b><#LANG_STARTER_KIT_HINT_SHOWS#>:</b> [#SHOW_HINT#]</div>
+                        [#endif#]
+                        [#if ADAPT_HINT#]
+                        <div class="small"><b><#LANG_STARTER_KIT_HINT_ADAPT#>:</b> [#ADAPT_HINT#]</div>
+                        [#endif#]
                         [#if REQUIRES#]
                         <div class="small text-muted"><#LANG_STARTER_KIT_REQUIRES#>: [#REQUIRES#]</div>
                         [#endif#]
@@ -44,6 +54,9 @@
                     <td>
                         [#if INSTALLED="1"#]
                         <span class="label label-success"><#LANG_STARTER_KIT_INSTALLED#></span>
+                        [#if UPDATE_AVAILABLE="1"#]
+                        <div class="small text-warning"><#LANG_STARTER_KIT_UPDATE_HINT#></div>
+                        [#endif#]
                         <div class="small text-muted">[#INSTALLED_DATE#]</div>
                         [#else#]
                         <span class="label label-default"><#LANG_STARTER_KIT_NOT_INSTALLED#></span>

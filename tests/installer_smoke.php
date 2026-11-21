@@ -178,6 +178,25 @@ check($status === 'skipped', 'modified scene should be skipped');
 check(count(table_rows('scenes')) === 1, 'modified scene row kept');
 check(count(table_rows('elements')) === 1, 'modified element kept');
 
+// --- text file: create and safe removal ----------------------------------
+$text_record = $kit->createTextFile(array(
+    'name' => 'smoke_note',
+    'content' => 'Hello {{NAME}}'
+));
+check(is_array($text_record), 'createTextFile should return a record');
+check(is_file(ROOT . $text_record['file']), 'text file should be written');
+check(file_get_contents(ROOT . $text_record['file']) === 'Hello Hello', 'text file tokens resolved');
+$status = $kit->removeTextFile($text_record);
+check($status === 'removed', 'unchanged text file should be removed');
+check(!is_file(ROOT . $text_record['file']), 'text file removed');
+
+$text_record = $kit->createTextFile(array('name' => 'smoke_note2', 'content' => 'original'));
+file_put_contents(ROOT . $text_record['file'], 'edited');
+$status = $kit->removeTextFile($text_record);
+check($status === 'skipped', 'edited text file should be skipped');
+check(is_file(ROOT . $text_record['file']), 'edited text file kept');
+@unlink(ROOT . $text_record['file']);
+
 // --- layout: create ------------------------------------------------------
 $layout_record = $kit->createLayout(array(
     'title' => '{{NAME}} page',
@@ -213,6 +232,7 @@ check(is_file(ROOT . $layout_record['file']), 'edited layout file kept');
 foreach (table_rows('layouts') as $row) {
     @unlink(ROOT . 'cms/layouts/' . (int)$row['ID'] . '.html');
 }
+@rmdir($root . '/cms/texts');
 @rmdir($root . '/cms/layouts');
 @rmdir($root . '/cms');
 @rmdir($root);

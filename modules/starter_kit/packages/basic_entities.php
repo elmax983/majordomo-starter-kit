@@ -17,6 +17,10 @@ return array(
     'version' => 1,
     'title_key' => 'STARTER_KIT_PKG_BASIC_TITLE',
     'description_key' => 'STARTER_KIT_PKG_BASIC_DESC',
+    'hints' => array(
+        'shows' => 'STARTER_KIT_HINT_BASIC_SHOWS',
+        'adapt' => 'STARTER_KIT_HINT_BASIC_ADAPT'
+    ),
     'texts' => array(
         'ON' => 'STARTER_KIT_TEXT_ON',
         'OFF' => 'STARTER_KIT_TEXT_OFF',
@@ -44,6 +48,7 @@ return array(
         array(
             'title' => 'SK_Device',
             'description' => '{{DEVICE_DESC}}',
+            'template' => '<b>%.object_title%</b>: %.status%',
             'properties' => array(
                 'state' => array('onchange' => 'onStateChanged'),
                 'status' => array(),
@@ -84,6 +89,7 @@ CODE
             'title' => 'SK_Lamp',
             'parent' => 'SK_Device',
             'description' => '{{LAMP_DESC}}',
+            'template' => '<b>%.object_title%</b>: %.status% (%.brightness% / 100)',
             'properties' => array(
                 'brightness' => array('onchange' => 'onBrightnessChanged')
             ),
@@ -136,6 +142,7 @@ CODE
             'title' => 'SK_Sensor',
             'parent' => 'SK_Device',
             'description' => '{{SENSOR_DESC}}',
+            'template' => '<b>%.object_title%</b>: %.status%',
             'properties' => array(
                 'value' => array('onchange' => 'onValueChanged'),
                 'unit' => array('onchange' => 'onValueChanged')
@@ -173,6 +180,7 @@ CODE
             'title' => 'SK_Button',
             'parent' => 'SK_Device',
             'description' => '{{BUTTON_DESC}}',
+            'template' => '<b>%.object_title%</b>: %.status%',
             'properties' => array(
                 'pressCount' => array(),
                 'lastPressed' => array()
@@ -197,6 +205,7 @@ CODE
             'title' => 'SK_Thermostat',
             'parent' => 'SK_Device',
             'description' => '{{THERMOSTAT_DESC}}',
+            'template' => '<b>%.object_title%</b>: %.status% (%.currentTemp% &rarr; %.targetTemp%)',
             'properties' => array(
                 'currentTemp' => array('onchange' => 'onValueChanged'),
                 'targetTemp' => array('onchange' => 'onSettingChanged'),
@@ -274,6 +283,7 @@ CODE
         array(
             'title' => 'SK_Room',
             'description' => '{{ROOM_DESC}}',
+            'template' => '<b>%.object_title%</b>: %.summary%',
             'properties' => array(
                 'roomName' => array(),
                 'deviceList' => array(),

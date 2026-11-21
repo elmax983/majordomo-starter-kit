@@ -12,6 +12,10 @@ return array(
     'version' => 1,
     'title_key' => 'STARTER_KIT_PKG_SUN_TITLE',
     'description_key' => 'STARTER_KIT_PKG_SUN_DESC',
+    'hints' => array(
+        'shows' => 'STARTER_KIT_HINT_SUN_SHOWS',
+        'adapt' => 'STARTER_KIT_HINT_SUN_ADAPT'
+    ),
     'classes' => array(
         array(
             'title' => 'SK_Sun',

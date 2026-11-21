@@ -224,6 +224,12 @@ class starter_kit extends module
                 }
             }
 
+            $hints = isset($package['hints']) && is_array($package['hints']) ? $package['hints'] : array();
+            $hint_shows = isset($hints['shows']) ? $this->lang($hints['shows'], '') : '';
+            $hint_adapt = isset($hints['adapt']) ? $this->lang($hints['adapt'], '') : '';
+            $package_version = isset($package['version']) ? (int)$package['version'] : 1;
+            $installed_version = isset($record['version']) ? (int)$record['version'] : 0;
+
             $result[] = array(
                 'ID' => $id,
                 'TITLE' => $this->lang($package['title_key'], $id),
@@ -234,6 +240,11 @@ class starter_kit extends module
                 'REQUIRES' => implode(', ', $requires),
                 'REQUIRES_MISSING' => implode(', ', $requires_missing),
                 'REQUIRED_BY' => implode(', ', $required_by),
+                'SHOW_HINT' => $hint_shows,
+                'ADAPT_HINT' => $hint_adapt,
+                'VERSION' => $package_version,
+                'INSTALLED_VERSION' => $installed_version,
+                'UPDATE_AVAILABLE' => ($installed && $installed_version < $package_version) ? 1 : 0,
             );
         }
         $this->texts = array();
@@ -282,6 +293,17 @@ class starter_kit extends module
                 $rec = SQLSelectOne("SELECT ID FROM layouts WHERE TITLE='" . DBSafe($title) . "'");
                 if ($rec['ID']) {
                     $conflicts[] = $title;
+                }
+            }
+        }
+        if (isset($package['text_files']) && is_array($package['text_files'])) {
+            foreach ($package['text_files'] as $entity) {
+                $name = isset($entity['name']) ? $entity['name'] : '';
+                if ($name == '' || !defined('ROOT')) {
+                    continue;
+                }
+                if (file_exists(ROOT . 'cms/texts/' . $name . '.txt')) {
+                    $conflicts[] = 'cms/texts/' . $name . '.txt';
                 }
             }
         }
@@ -373,6 +395,7 @@ class starter_kit extends module
             'entities' => array(
                 'classes' => array(),
                 'objects' => array(),
+                'text_files' => array(),
                 'scripts' => array(),
                 'scenes' => array(),
                 'layouts' => array()
@@ -407,6 +430,21 @@ class starter_kit extends module
                     return $result;
                 }
                 $record['entities']['objects'][$entity['title']] = $object_record;
+            }
+        }
+
+        if (isset($package['text_files']) && is_array($package['text_files'])) {
+            foreach ($package['text_files'] as $entity) {
+                $text_record = $this->createTextFile($entity);
+                if ($text_record === false) {
+                    $result['messages'][] = array(
+                        'CLASS' => 'danger',
+                        'TEXT' => $this->lang($package['title_key'], $package_id) . ': cannot create text file ' . $entity['name']
+                    );
+                    $this->rollbackRecord($record);
+                    return $result;
+                }
+                $record['entities']['text_files'][$text_record['name']] = $text_record;
             }
         }
 
@@ -477,6 +515,10 @@ class starter_kit extends module
             $class_rec['DESCRIPTION'] = $this->resolveText($entity['description']);
             SQLUpdate('classes', $class_rec);
         }
+        if (isset($entity['template'])) {
+            $class_rec['TEMPLATE'] = $this->resolveText($entity['template']);
+            SQLUpdate('classes', $class_rec);
+        }
 
         $record = array(
             'id' => (int)$class_id,
@@ -484,6 +526,9 @@ class starter_kit extends module
             'properties' => array(),
             'methods' => array()
         );
+        if (isset($entity['template'])) {
+            $record['template_hash'] = md5(trim($class_rec['TEMPLATE']));
+        }
 
         if (isset($entity['properties']) && is_array($entity['properties'])) {
             foreach ($entity['properties'] as $name => $options) {
@@ -597,6 +642,72 @@ class starter_kit extends module
             'title' => $entity['title'],
             'hash' => md5(trim($code))
         );
+    }
+
+    /**
+     * Create a text file in cms/texts/<name>.txt. These files are managed by
+     * the "Text files" module and can be read by scripts with LoadFile().
+     *
+     * Expected package format:
+     *   'text_files' => array(
+     *       array('name' => 'starter_kit_help', 'content' => '...')
+     *   )
+     */
+    function createTextFile($entity)
+    {
+        $name = isset($entity['name']) ? trim($entity['name']) : '';
+        if (!preg_match('/^[A-Za-z0-9_\-]+$/', $name)) {
+            return false;
+        }
+        $content = isset($entity['content']) ? $this->resolveText($entity['content']) : '';
+        $relative = 'cms/texts/' . $name . '.txt';
+        if (!$this->writeManagedFile($relative, $content)) {
+            return false;
+        }
+        return array(
+            'name' => $name,
+            'file' => $relative,
+            'hash' => md5(trim($content))
+        );
+    }
+
+    /**
+     * Write a runtime file relative to ROOT, creating the directory if needed.
+     * Refuses paths outside the allowed cms subdirectories.
+     */
+    function writeManagedFile($relative, $content)
+    {
+        if (!defined('ROOT') || !is_string($relative)) {
+            return false;
+        }
+        if (strpos($relative, 'cms/texts/') !== 0 && strpos($relative, 'cms/layouts/') !== 0) {
+            return false;
+        }
+        $path = ROOT . $relative;
+        $dir = dirname($path);
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0755, true);
+        }
+        $written = @file_put_contents($path, $content);
+        if ($written === false) {
+            return false;
+        }
+        @chmod($path, 0644);
+        return true;
+    }
+
+    function deleteManagedFile($relative)
+    {
+        if (!defined('ROOT') || !is_string($relative)) {
+            return;
+        }
+        if (strpos($relative, 'cms/texts/') !== 0 && strpos($relative, 'cms/layouts/') !== 0) {
+            return;
+        }
+        $path = ROOT . $relative;
+        if (is_file($path)) {
+            @unlink($path);
+        }
     }
 
     /**
@@ -763,13 +874,15 @@ class starter_kit extends module
     function rollbackRecord($record)
     {
         $fake = array('entities' => $record['entities']);
-        foreach (array('scripts', 'layouts', 'scenes', 'objects', 'classes') as $type) {
+        foreach (array('scripts', 'text_files', 'layouts', 'scenes', 'objects', 'classes') as $type) {
             if (!isset($fake['entities'][$type])) {
                 continue;
             }
             foreach ($fake['entities'][$type] as $entity) {
                 if ($type == 'scripts') {
                     SQLExec("DELETE FROM scripts WHERE ID=" . (int)$entity['id']);
+                } elseif ($type == 'text_files') {
+                    $this->deleteManagedFile(isset($entity['file']) ? $entity['file'] : '');
                 } elseif ($type == 'layouts') {
                     SQLExec("DELETE FROM layouts WHERE ID=" . (int)$entity['id']);
                     $this->deleteLayoutFile(isset($entity['file']) ? $entity['file'] : '');
@@ -815,8 +928,8 @@ class starter_kit extends module
 
         $skipped = array();
 
-        // Reverse order: scripts, layouts, scenes, objects, classes.
-        foreach (array('scripts', 'layouts', 'scenes', 'objects', 'classes') as $type) {
+        // Reverse order: scripts, text files, layouts, scenes, objects, classes.
+        foreach (array('scripts', 'text_files', 'layouts', 'scenes', 'objects', 'classes') as $type) {
             if (!isset($record['entities'][$type])) {
                 continue;
             }
@@ -824,6 +937,8 @@ class starter_kit extends module
                 $status = 'removed';
                 if ($type == 'scripts') {
                     $status = $this->removeScript($entity);
+                } elseif ($type == 'text_files') {
+                    $status = $this->removeTextFile($entity);
                 } elseif ($type == 'layouts') {
                     $status = $this->removeLayout($entity);
                 } elseif ($type == 'scenes') {
@@ -836,13 +951,13 @@ class starter_kit extends module
                 if ($status == 'removed') {
                     unset($record['entities'][$type][$title]);
                 } else {
-                    $skipped[] = $entity['title'];
+                    $skipped[] = isset($entity['title']) ? $entity['title'] : (isset($entity['name']) ? $entity['name'] : $title);
                 }
             }
         }
 
         $empty = true;
-        foreach (array('scripts', 'layouts', 'scenes', 'objects', 'classes') as $type) {
+        foreach (array('scripts', 'text_files', 'layouts', 'scenes', 'objects', 'classes') as $type) {
             if (isset($record['entities'][$type]) && count($record['entities'][$type])) {
                 $empty = false;
             }
@@ -876,6 +991,30 @@ class starter_kit extends module
             return 'skipped';
         }
         SQLExec("DELETE FROM scripts WHERE ID=" . (int)$entity['id']);
+        return 'removed';
+    }
+
+    /**
+     * Remove a managed text file only if its content is unchanged.
+     */
+    function removeTextFile($entity)
+    {
+        $relative = isset($entity['file']) ? $entity['file'] : '';
+        if ($relative == '' || !defined('ROOT')) {
+            return 'removed';
+        }
+        if (strpos($relative, 'cms/texts/') !== 0) {
+            return 'skipped';
+        }
+        $path = ROOT . $relative;
+        if (!is_file($path)) {
+            return 'removed';
+        }
+        $content = @file_get_contents($path);
+        if ($content === false || md5(trim($content)) != $entity['hash']) {
+            return 'skipped'; // user edited the text file
+        }
+        @unlink($path);
         return 'removed';
     }
 
@@ -1014,6 +1153,9 @@ class starter_kit extends module
         }
         if ($rec['TITLE'] != $entity['title']) {
             return 'skipped';
+        }
+        if (isset($entity['template_hash']) && md5(trim((string)$rec['TEMPLATE'])) != $entity['template_hash']) {
+            return 'skipped'; // user changed the class display template
         }
         $child = SQLSelectOne("SELECT ID FROM classes WHERE PARENT_ID=" . (int)$entity['id']);
         if ($child['ID']) {

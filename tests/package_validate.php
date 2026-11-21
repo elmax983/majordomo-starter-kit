@@ -28,6 +28,7 @@ $sceneActions = array();
 $sceneTitles = array();
 $layoutRefs = array();
 $layoutTitles = array();
+$textFileNames = array();
 
 // Standard classes shipped with the MajorDoMo schema. Package classes may
 // inherit from them without defining them.
@@ -70,7 +71,7 @@ function validate_collect_tokens($value, &$tokens)
 
 function validate_entities($package, $type, &$errors, &$warnings, &$classTitles, &$objectTitles, &$scriptTitles,
                            &$classParents, &$classMethods, &$objectClasses, &$objectPackages, &$sceneActions, &$sceneTitles,
-                           &$layoutRefs, &$layoutTitles)
+                           &$layoutRefs, &$layoutTitles, &$textFileNames)
 {
     global $coreClasses;
 
@@ -300,6 +301,27 @@ function validate_entities($package, $type, &$errors, &$warnings, &$classTitles,
                 }
             }
         }
+        return;
+    }
+
+    if ($type == 'text_files') {
+        foreach ($package[$type] as $entity) {
+            $name = isset($entity['name']) ? $entity['name'] : '';
+            if ($name == '') {
+                $errors[] = $package['id'] . ': text file without a name';
+                continue;
+            }
+            if (!preg_match('/^[A-Za-z0-9_\-]+$/', $name)) {
+                $errors[] = $package['id'] . ': invalid text file name ' . $name;
+            }
+            if (isset($textFileNames[$name])) {
+                $errors[] = $package['id'] . ': duplicate text file name ' . $name;
+            }
+            $textFileNames[$name] = 1;
+            if (!isset($entity['content']) || !is_string($entity['content']) || trim($entity['content']) == '') {
+                $errors[] = $package['id'] . ': text file ' . $name . ' has no content';
+            }
+        }
     }
 }
 
@@ -361,6 +383,18 @@ foreach ($files as $file) {
     $packageIds[$package['id']] = 1;
     $packageData[$package['id']] = $package;
 
+    if (isset($package['hints'])) {
+        if (!is_array($package['hints'])) {
+            $errors[] = $package['id'] . ': "hints" must be an array';
+        } else {
+            foreach (array('shows', 'adapt') as $hintKey) {
+                if (!isset($package['hints'][$hintKey]) || $package['hints'][$hintKey] == '') {
+                    $warnings[] = $package['id'] . ': hints.' . $hintKey . ' is not set';
+                }
+            }
+        }
+    }
+
     $texts = isset($package['texts']) && is_array($package['texts']) ? $package['texts'] : array();
     foreach ($texts as $token => $langKey) {
         if ($token == '' || $langKey == '') {
@@ -369,7 +403,7 @@ foreach ($files as $file) {
     }
 
     $tokens = array();
-    foreach (array('classes', 'objects', 'scripts', 'scenes', 'layouts') as $type) {
+    foreach (array('classes', 'objects', 'scripts', 'scenes', 'layouts', 'text_files') as $type) {
         if (isset($package[$type]) && is_array($package[$type])) {
             validate_collect_tokens($package[$type], $tokens);
         }
@@ -385,10 +419,10 @@ foreach ($files as $file) {
         }
     }
 
-    foreach (array('classes', 'objects', 'scripts', 'scenes', 'layouts') as $type) {
+    foreach (array('classes', 'objects', 'scripts', 'scenes', 'layouts', 'text_files') as $type) {
         validate_entities($package, $type, $errors, $warnings, $classTitles, $objectTitles, $scriptTitles,
             $classParents, $classMethods, $objectClasses, $objectPackages, $sceneActions, $sceneTitles,
-            $layoutRefs, $layoutTitles);
+            $layoutRefs, $layoutTitles, $textFileNames);
     }
 }
 
@@ -569,5 +603,6 @@ if (count($errors)) {
 }
 echo 'OK: ' . count($packageIds) . ' package(s), ' . count($classTitles) . ' class(es), ' .
     count($objectTitles) . ' object(s), ' . count($scriptTitles) . ' script(s), ' .
-    count($sceneTitles) . ' scene(s), ' . count($layoutTitles) . ' layout(s); ' .
+    count($sceneTitles) . ' scene(s), ' . count($layoutTitles) . ' layout(s), ' .
+    count($textFileNames) . ' text file(s); ' .
     count($warnings) . ' warning(s)' . PHP_EOL;

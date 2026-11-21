@@ -11,6 +11,10 @@ return array(
     'version' => 1,
     'title_key' => 'STARTER_KIT_PKG_CLOCK_TITLE',
     'description_key' => 'STARTER_KIT_PKG_CLOCK_DESC',
+    'hints' => array(
+        'shows' => 'STARTER_KIT_HINT_CLOCK_SHOWS',
+        'adapt' => 'STARTER_KIT_HINT_CLOCK_ADAPT'
+    ),
     'classes' => array(
         array(
             'title' => 'SK_Clock',
