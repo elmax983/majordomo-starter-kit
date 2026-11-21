@@ -35,6 +35,7 @@ class starter_kit extends module
     function __construct()
     {
         $this->name = 'starter_kit';
+        $this->version = '1.0.0';
         $this->loadLanguage();
         $this->title = '<#LANG_STARTER_KIT_TITLE#>';
         $this->module_category = '<#LANG_SECTION_SYSTEM#>';
@@ -138,6 +139,7 @@ class starter_kit extends module
         $this->admin($out);
         $out['ACTION'] = $this->action;
         $out['MODE'] = $this->mode;
+        $out['MODULE_VERSION'] = $this->version;
         $this->data = $out;
         $p = new parser(DIR_TEMPLATES . $this->name . '/' . $this->name . '.html', $this->data, $this);
         $this->result = $p->result;
@@ -859,6 +861,19 @@ class starter_kit extends module
                 }
             }
         }
+
+        // Set defaults for properties that have no value yet (new in this
+        // package version). Existing values are never overwritten.
+        if (isset($entity['properties']) && is_array($entity['properties'])) {
+            foreach ($entity['properties'] as $name => $value) {
+                $value_rec = SQLSelectOne("SELECT ID FROM pvalues WHERE PROPERTY_NAME='" .
+                    DBSafe($title . '.' . $name) . "'");
+                if (!$value_rec['ID']) {
+                    setGlobal($title . '.' . $name, $this->resolveText($value));
+                }
+            }
+        }
+
         $record['entities']['objects'][$title] = $meta;
     }
 

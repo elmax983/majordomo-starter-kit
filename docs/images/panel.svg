@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="560" viewBox="0 0 960 560">
+  <rect width="960" height="560" fill="#f2f4f7"/>
+  <rect x="0" y="0" width="960" height="52" fill="#ffffff" stroke="#dde3ea"/>
+  <text x="28" y="32" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#1f2d3d">MajorDoMo</text>
+  <text x="160" y="32" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#5b6b7c">Home</text>
+  <rect x="226" y="12" width="132" height="28" rx="4" fill="#2f6feb"/>
+  <text x="292" y="31" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#ffffff">Starter panel</text>
+  <text x="376" y="31" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#5b6b7c">Scenes</text>
+
+  <text x="30" y="86" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="bold" fill="#1f2d3d">Starter panel</text>
+  <text x="30" y="108" font-family="Arial, Helvetica, sans-serif" font-size="12" fill="#6b7a8c">Live values refresh automatically. Run SK_EntitiesDemo, SK_ConnectionCheck or a scene to fill the cards.</text>
+
+  <rect x="30" y="128" width="280" height="150" rx="6" fill="#ffffff" stroke="#dde3ea"/>
+  <text x="48" y="152" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#6b7a8c">LAMP</text>
+  <text x="48" y="190" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="bold" fill="#1f2d3d">on 60%</text>
+  <text x="48" y="220" font-family="Arial, Helvetica, sans-serif" font-size="12" fill="#5b6b7c">Brightness: 60</text>
+  <text x="48" y="242" font-family="Arial, Helvetica, sans-serif" font-size="11" fill="#8a99aa">Updated: 2026-11-21 18:42:11</text>
+
+  <rect x="330" y="128" width="280" height="150" rx="6" fill="#ffffff" stroke="#dde3ea"/>
+  <text x="348" y="152" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#6b7a8c">SENSOR</text>
+  <text x="348" y="190" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="bold" fill="#1f2d3d">21.5 °C</text>
+  <text x="348" y="220" font-family="Arial, Helvetica, sans-serif" font-size="12" fill="#5b6b7c">Last change: 18:42:11</text>
+
+  <rect x="630" y="128" width="300" height="150" rx="6" fill="#ffffff" stroke="#dde3ea"/>
+  <text x="648" y="152" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#6b7a8c">THERMOSTAT</text>
+  <text x="648" y="190" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="bold" fill="#1f2d3d">heating</text>
+  <text x="648" y="220" font-family="Arial, Helvetica, sans-serif" font-size="12" fill="#5b6b7c">Current: 19.5 °C · Target: 22 °C</text>
+
+  <rect x="30" y="296" width="440" height="120" rx="6" fill="#ffffff" stroke="#dde3ea"/>
+  <text x="48" y="320" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#6b7a8c">ROOM</text>
+  <text x="48" y="348" font-family="Arial, Helvetica, sans-serif" font-size="14" fill="#1f2d3d">StarterLamp: on 60%; StarterSensor: 21.5 °C;</text>
+  <text x="48" y="370" font-family="Arial, Helvetica, sans-serif" font-size="14" fill="#1f2d3d">StarterButton: presses: 2; StarterThermostat: heating</text>
+  <text x="48" y="396" font-family="Arial, Helvetica, sans-serif" font-size="11" fill="#8a99aa">Devices: 4 · Updated: 18:42:11</text>
+
+  <rect x="490" y="296" width="440" height="120" rx="6" fill="#ffffff" stroke="#dde3ea"/>
+  <text x="508" y="320" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#6b7a8c">SCENES</text>
+  <text x="508" y="348" font-family="Arial, Helvetica, sans-serif" font-size="14" fill="#1f2d3d">Active scene: morning</text>
+  <text x="508" y="370" font-family="Arial, Helvetica, sans-serif" font-size="12" fill="#5b6b7c">Updated: 2026-11-21 08:00:03</text>
+  <rect x="508" y="382" width="120" height="24" rx="4" fill="#eef3ff" stroke="#b9cdf5"/>
+  <text x="568" y="398" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="11" fill="#2f6feb">Open scenes</text>
+
+  <rect x="30" y="432" width="440" height="100" rx="6" fill="#ffffff" stroke="#dde3ea"/>
+  <text x="48" y="456" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#6b7a8c">MODES</text>
+  <text x="48" y="484" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="bold" fill="#1f2d3d">Guests</text>
+  <text x="48" y="508" font-family="Arial, Helvetica, sans-serif" font-size="12" fill="#5b6b7c">Debug 0 / Guests 1 / Vacation 0</text>
+
+  <rect x="490" y="432" width="440" height="100" rx="6" fill="#ffffff" stroke="#dde3ea"/>
+  <text x="508" y="456" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#6b7a8c">HINTS</text>
+  <text x="508" y="480" font-family="Arial, Helvetica, sans-serif" font-size="12" fill="#1f2d3d">Starter Kit: beginner guide — open modules, install packages,</text>
+  <text x="508" y="500" font-family="Arial, Helvetica, sans-serif" font-size="12" fill="#1f2d3d">run SK_EntitiesDemo, press a scene, open Text files.</text>
+</svg>
