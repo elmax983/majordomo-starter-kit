@@ -1056,12 +1056,8 @@ class starter_kit extends module
             'methods' => array()
         );
 
-        if (isset($entity['properties']) && is_array($entity['properties'])) {
-            foreach ($entity['properties'] as $name => $value) {
-                setGlobal($entity['title'] . '.' . $name, $this->resolveText($value));
-            }
-        }
-
+        // Object methods first: they override class methods and may be called
+        // by a property onchange hook while the default values are set below.
         if (isset($entity['methods']) && is_array($entity['methods'])) {
             foreach ($entity['methods'] as $name => $raw_code) {
                 $code = $this->resolveText($raw_code);
@@ -1076,6 +1072,12 @@ class starter_kit extends module
                     'id' => (int)$method['ID'],
                     'hash' => md5(trim($code))
                 );
+            }
+        }
+
+        if (isset($entity['properties']) && is_array($entity['properties'])) {
+            foreach ($entity['properties'] as $name => $value) {
+                setGlobal($entity['title'] . '.' . $name, $this->resolveText($value));
             }
         }
 
