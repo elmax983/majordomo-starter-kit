@@ -20,6 +20,12 @@ $packageData = array();
 $classTitles = array();
 $objectTitles = array();
 $scriptTitles = array();
+$classParents = array();
+$classMethods = array();
+$objectClasses = array();
+$objectPackages = array();
+$sceneActions = array();
+$sceneTitles = array();
 
 // Standard classes shipped with the MajorDoMo schema. Package classes may
 // inherit from them without defining them.
@@ -60,7 +66,8 @@ function validate_collect_tokens($value, &$tokens)
     }
 }
 
-function validate_entities($package, $type, &$errors, &$warnings, &$classTitles, &$objectTitles, &$scriptTitles)
+function validate_entities($package, $type, &$errors, &$warnings, &$classTitles, &$objectTitles, &$scriptTitles,
+                           &$classParents, &$classMethods, &$objectClasses, &$objectPackages, &$sceneActions, &$sceneTitles)
 {
     global $coreClasses;
 
@@ -97,6 +104,8 @@ function validate_entities($package, $type, &$errors, &$warnings, &$classTitles,
             $known[$title] = $parent;
 
             $methods = isset($entity['methods']) && is_array($entity['methods']) ? $entity['methods'] : array();
+            $classParents[$title] = $parent;
+            $classMethods[$title] = array_keys($methods);
             foreach ($methods as $name => $code) {
                 if (!is_string($code)) {
                     $errors[] = $package['id'] . ': class ' . $title . ' method ' . $name . ' must be a string';
@@ -130,8 +139,9 @@ function validate_entities($package, $type, &$errors, &$warnings, &$classTitles,
                             }
                             $cursor = $parentClass;
                         } else {
-                            // Parent is a standard class: its methods are unknown here.
-                            $found = null;
+                            // Standard class parent: its methods are unknown here.
+                            // Unknown parent classes are reported above.
+                            $found = in_array($cursor, $coreClasses, true) ? null : false;
                             break;
                         }
                     }
@@ -163,6 +173,8 @@ function validate_entities($package, $type, &$errors, &$warnings, &$classTitles,
             } elseif (!isset($classTitles[$class]) && !in_array($class, $coreClasses, true)) {
                 $errors[] = $package['id'] . ': object ' . $title . ' uses an unknown class ' . $class;
             }
+            $objectClasses[$title] = $class;
+            $objectPackages[$title] = $package['id'];
 
             $properties = isset($entity['properties']) && is_array($entity['properties']) ? $entity['properties'] : array();
             foreach ($properties as $name => $value) {
@@ -206,6 +218,47 @@ function validate_entities($package, $type, &$errors, &$warnings, &$classTitles,
                 continue;
             }
             validate_lint($entity['code'], $package['id'] . ': script ' . $title, $errors);
+        }
+        return;
+    }
+
+    if ($type == 'scenes') {
+        foreach ($package[$type] as $entity) {
+            $title = isset($entity['title']) ? $entity['title'] : '';
+            if ($title == '') {
+                $errors[] = $package['id'] . ': scene without a title';
+                continue;
+            }
+            if (isset($sceneTitles[$title])) {
+                $errors[] = $package['id'] . ': duplicate scene title ' . $title;
+            }
+            $sceneTitles[$title] = 1;
+
+            $elements = isset($entity['elements']) && is_array($entity['elements']) ? $entity['elements'] : array();
+            if (!count($elements)) {
+                $warnings[] = $package['id'] . ': scene ' . $title . ' has no elements';
+            }
+            foreach ($elements as $element) {
+                $elementTitle = isset($element['title']) ? $element['title'] : '';
+                if ($elementTitle == '') {
+                    $errors[] = $package['id'] . ': scene ' . $title . ' has an element without a title';
+                }
+                $actionObject = isset($element['action_object']) ? $element['action_object'] : '';
+                $actionMethod = isset($element['action_method']) ? $element['action_method'] : '';
+                if (($actionObject == '') !== ($actionMethod == '')) {
+                    $errors[] = $package['id'] . ': scene ' . $title . ' element ' . $elementTitle .
+                        ' must define both action_object and action_method';
+                }
+                if ($actionObject != '') {
+                    $sceneActions[] = array(
+                        'package' => $package['id'],
+                        'scene' => $title,
+                        'element' => $elementTitle,
+                        'object' => $actionObject,
+                        'method' => $actionMethod
+                    );
+                }
+            }
         }
     }
 }
@@ -276,7 +329,7 @@ foreach ($files as $file) {
     }
 
     $tokens = array();
-    foreach (array('classes', 'objects', 'scripts') as $type) {
+    foreach (array('classes', 'objects', 'scripts', 'scenes') as $type) {
         if (isset($package[$type]) && is_array($package[$type])) {
             validate_collect_tokens($package[$type], $tokens);
         }
@@ -292,8 +345,106 @@ foreach ($files as $file) {
         }
     }
 
-    foreach (array('classes', 'objects', 'scripts') as $type) {
-        validate_entities($package, $type, $errors, $warnings, $classTitles, $objectTitles, $scriptTitles);
+    foreach (array('classes', 'objects', 'scripts', 'scenes') as $type) {
+        validate_entities($package, $type, $errors, $warnings, $classTitles, $objectTitles, $scriptTitles,
+            $classParents, $classMethods, $objectClasses, $objectPackages, $sceneActions, $sceneTitles);
+    }
+}
+
+// Dependencies: every required package must exist; cycles are not allowed.
+foreach ($packageData as $id => $package) {
+    if (!isset($package['requires']) || !is_array($package['requires'])) {
+        continue;
+    }
+    foreach ($package['requires'] as $required_id) {
+        if ($required_id == $id) {
+            $errors[] = $id . ': package requires itself';
+        } elseif (!isset($packageData[$required_id])) {
+            $errors[] = $id . ': requires unknown package ' . $required_id;
+        }
+    }
+}
+$visiting = array();
+$visited = array();
+$visit = function ($id) use (&$visit, &$visiting, &$visited, &$packageData, &$errors) {
+    if (isset($visited[$id])) {
+        return;
+    }
+    if (isset($visiting[$id])) {
+        $errors[] = $id . ': circular dependency between packages';
+        return;
+    }
+    $visiting[$id] = 1;
+    if (isset($packageData[$id]['requires']) && is_array($packageData[$id]['requires'])) {
+        foreach ($packageData[$id]['requires'] as $required_id) {
+            if (isset($packageData[$required_id])) {
+                $visit($required_id);
+            }
+        }
+    }
+    unset($visiting[$id]);
+    $visited[$id] = 1;
+};
+foreach (array_keys($packageData) as $id) {
+    $visit($id);
+}
+
+// Transitive requirement closure for a package.
+function package_requires($id, $packageData)
+{
+    $seen = array();
+    $queue = array($id);
+    while (count($queue)) {
+        $current = array_shift($queue);
+        if (isset($seen[$current])) {
+            continue;
+        }
+        $seen[$current] = 1;
+        if (isset($packageData[$current]['requires']) && is_array($packageData[$current]['requires'])) {
+            foreach ($packageData[$current]['requires'] as $required_id) {
+                if (!isset($seen[$required_id])) {
+                    $queue[] = $required_id;
+                }
+            }
+        }
+    }
+    unset($seen[$id]);
+    return $seen;
+}
+
+// Scene buttons must call a method that exists on the target object (directly
+// or through the class hierarchy), and the object must belong to the package
+// itself or to one of its declared dependencies.
+foreach ($sceneActions as $action) {
+    if (!isset($objectClasses[$action['object']])) {
+        $errors[] = $action['package'] . ': scene ' . $action['scene'] . ' element ' . $action['element'] .
+            ' calls an unknown object ' . $action['object'];
+        continue;
+    }
+    $owner = isset($objectPackages[$action['object']]) ? $objectPackages[$action['object']] : '';
+    $allowed = package_requires($action['package'], $packageData);
+    if ($owner != $action['package'] && !isset($allowed[$owner])) {
+        $errors[] = $action['package'] . ': scene ' . $action['scene'] . ' element ' . $action['element'] .
+            ' uses object ' . $action['object'] . ' from package ' . $owner . ' which is not in requires';
+    }
+    $class = $objectClasses[$action['object']];
+    $found = false;
+    $guard = 0;
+    while ($class != '' && $guard < 30) {
+        if (isset($classMethods[$class]) && in_array($action['method'], $classMethods[$class], true)) {
+            $found = true;
+            break;
+        }
+        if (!isset($classParents[$class])) {
+            $found = null; // standard class: methods are unknown here
+            break;
+        }
+        $class = $classParents[$class];
+        $guard++;
+    }
+    if ($found === false) {
+        $errors[] = $action['package'] . ': scene ' . $action['scene'] . ' element ' . $action['element'] .
+            ' calls an unknown method ' . $action['object'] . '.' . $action['method'];
     }
 }
 
@@ -360,5 +511,6 @@ if (count($errors)) {
     exit(1);
 }
 echo 'OK: ' . count($packageIds) . ' package(s), ' . count($classTitles) . ' class(es), ' .
-    count($objectTitles) . ' object(s), ' . count($scriptTitles) . ' script(s); ' .
+    count($objectTitles) . ' object(s), ' . count($scriptTitles) . ' script(s), ' .
+    count($sceneTitles) . ' scene(s); ' .
     count($warnings) . ' warning(s)' . PHP_EOL;

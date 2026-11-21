@@ -51,8 +51,11 @@ sudo ./install.sh /var/www
   `SK_Thermostat`, класс `SK_Room`, демо-объекты `StarterLamp`,
   `StarterSensor`, `StarterButton`, `StarterThermostat`, `StarterRoom` и скрипт
   `SK_EntitiesDemo`: свойства, методы, onchange-связки, простая комната-сводка.
+- **Scenes** — четыре сцены (Доброе утро, Доброй ночи, Ушли, Пришли) на
+  виртуальных устройствах, объект `StarterScenes` и класс `SK_Scene`. Кнопки
+  сцен вызывают методы объекта; набор требует `basic_entities`.
 
-Планируются: сцены, скрипты, блоки панели, подсказки.
+Планируются: скрипты, блоки панели, подсказки.
 
 ## Безопасность
 

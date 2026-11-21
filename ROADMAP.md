@@ -11,14 +11,17 @@
   `SK_Button` / `SK_Thermostat`, `SK_Room`, demo objects and `SK_EntitiesDemo`.
 - `{{TOKEN}}` text substitution at install time (language-neutral packages).
 - Static package validator: `php tests/package_validate.php`.
+- Package `scenes`: Good morning / Good night / Away / Home, `SK_Scene` /
+  `StarterScenes`, scene buttons via `ACTION_OBJECT` / `ACTION_METHOD`.
+- `requires` dependencies between packages with a check in the installer and a
+  note on the module page.
 
 ## Next packages
 
-1. **Scenes** — Good morning / Good night / Away / Home on virtual devices.
-2. **Scripts** — welcome message, connection check, presence simulation,
+1. **Scripts** — welcome message, connection check, presence simulation,
    simple schedule; with comments and hints.
-3. **Panel** — example home page blocks/widgets and a small layout.
-4. **Hints** — per-package “what it shows” and “how to adapt” notes.
+2. **Panel** — example home page blocks/widgets and a small layout.
+3. **Hints** — per-package “what it shows” and “how to adapt” notes.
 
 ## Later
 

@@ -28,6 +28,15 @@
                     <td>
                         <b>[#TITLE#]</b>
                         <div class="text-muted">[#DESCRIPTION#]</div>
+                        [#if REQUIRES#]
+                        <div class="small text-muted"><#LANG_STARTER_KIT_REQUIRES#>: [#REQUIRES#]</div>
+                        [#endif#]
+                        [#if REQUIRES_MISSING#]
+                        <div class="small" style="color:#a94442;"><#LANG_STARTER_KIT_REQUIRES_MISSING#>: [#REQUIRES_MISSING#]</div>
+                        [#endif#]
+                        [#if REQUIRED_BY#]
+                        <div class="small text-muted"><#LANG_STARTER_KIT_REQUIRED_BY#>: [#REQUIRED_BY#]</div>
+                        [#endif#]
                         [#if NOTE#]
                         <div class="small" style="color:#a94442;">[#NOTE#]</div>
                         [#endif#]

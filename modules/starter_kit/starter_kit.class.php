@@ -182,6 +182,7 @@ class starter_kit extends module
     {
         $result = array();
         foreach ($this->packages as $id => $package) {
+            $this->texts = isset($package['texts']) && is_array($package['texts']) ? $package['texts'] : array();
             $installed = isset($this->config['installed'][$id]);
             $record = $installed ? $this->config['installed'][$id] : array();
             $conflicts = $installed ? array() : $this->detectConflicts($package);
@@ -189,6 +190,31 @@ class starter_kit extends module
             if (count($conflicts)) {
                 $note = $this->lang('STARTER_KIT_CONFLICT') . ': ' . implode(', ', $conflicts);
             }
+
+            $requires = array();
+            $requires_missing = array();
+            if (isset($package['requires']) && is_array($package['requires'])) {
+                foreach ($package['requires'] as $required_id) {
+                    $required_title = isset($this->packages[$required_id])
+                        ? $this->lang($this->packages[$required_id]['title_key'], $required_id)
+                        : $required_id;
+                    $requires[] = $required_title;
+                    if (!isset($this->config['installed'][$required_id])) {
+                        $requires_missing[] = $required_title;
+                    }
+                }
+            }
+
+            $required_by = array();
+            foreach ($this->packages as $other_id => $other_package) {
+                if ($other_id == $id || !isset($this->config['installed'][$other_id])) {
+                    continue;
+                }
+                if (isset($other_package['requires']) && in_array($id, $other_package['requires'], true)) {
+                    $required_by[] = $this->lang($other_package['title_key'], $other_id);
+                }
+            }
+
             $result[] = array(
                 'ID' => $id,
                 'TITLE' => $this->lang($package['title_key'], $id),
@@ -196,8 +222,12 @@ class starter_kit extends module
                 'INSTALLED' => $installed ? 1 : 0,
                 'INSTALLED_DATE' => isset($record['installed_at']) ? $record['installed_at'] : '',
                 'NOTE' => $note,
+                'REQUIRES' => implode(', ', $requires),
+                'REQUIRES_MISSING' => implode(', ', $requires_missing),
+                'REQUIRED_BY' => implode(', ', $required_by),
             );
         }
+        $this->texts = array();
         return $result;
     }
 
@@ -214,17 +244,26 @@ class starter_kit extends module
             }
             foreach ($package[$type] as $entity) {
                 $table = $type == 'classes' ? 'classes' : 'objects';
-                $rec = SQLSelectOne("SELECT ID FROM " . $table . " WHERE TITLE='" . DBSafe($entity['title']) . "'");
+                $rec = SQLSelectOne("SELECT ID FROM " . $table . " WHERE TITLE='" . DBSafe($this->resolveText($entity['title'])) . "'");
                 if ($rec['ID']) {
-                    $conflicts[] = $entity['title'];
+                    $conflicts[] = $this->resolveText($entity['title']);
                 }
             }
         }
         if (isset($package['scripts']) && is_array($package['scripts'])) {
             foreach ($package['scripts'] as $entity) {
-                $rec = SQLSelectOne("SELECT ID FROM scripts WHERE TITLE='" . DBSafe($entity['title']) . "'");
+                $rec = SQLSelectOne("SELECT ID FROM scripts WHERE TITLE='" . DBSafe($this->resolveText($entity['title'])) . "'");
                 if ($rec['ID']) {
-                    $conflicts[] = $entity['title'];
+                    $conflicts[] = $this->resolveText($entity['title']);
+                }
+            }
+        }
+        if (isset($package['scenes']) && is_array($package['scenes'])) {
+            foreach ($package['scenes'] as $entity) {
+                $title = $this->resolveText($entity['title']);
+                $rec = SQLSelectOne("SELECT ID FROM scenes WHERE TITLE='" . DBSafe($title) . "'");
+                if ($rec['ID']) {
+                    $conflicts[] = $title;
                 }
             }
         }
@@ -248,6 +287,28 @@ class starter_kit extends module
         }
 
         $package = $this->packages[$package_id];
+        $this->texts = isset($package['texts']) && is_array($package['texts']) ? $package['texts'] : array();
+
+        $requires_missing = array();
+        if (isset($package['requires']) && is_array($package['requires'])) {
+            foreach ($package['requires'] as $required_id) {
+                if (!isset($this->config['installed'][$required_id])) {
+                    $requires_missing[] = isset($this->packages[$required_id])
+                        ? $this->lang($this->packages[$required_id]['title_key'], $required_id)
+                        : $required_id;
+                }
+            }
+        }
+        if (count($requires_missing)) {
+            $result['messages'][] = array(
+                'CLASS' => 'danger',
+                'TEXT' => $this->lang($package['title_key'], $package_id) . ': ' .
+                    $this->lang('STARTER_KIT_REQUIRES') . ' ' . implode(', ', $requires_missing) .
+                    ' (' . $this->lang('STARTER_KIT_REQUIRES_MISSING') . ')'
+            );
+            return $result;
+        }
+
         $conflicts = $this->detectConflicts($package);
         if (count($conflicts)) {
             $result['messages'][] = array(
@@ -258,12 +319,10 @@ class starter_kit extends module
             return $result;
         }
 
-        $this->texts = isset($package['texts']) && is_array($package['texts']) ? $package['texts'] : array();
-
         $record = array(
             'version' => isset($package['version']) ? (int)$package['version'] : 1,
             'installed_at' => date('Y-m-d H:i:s'),
-            'entities' => array('classes' => array(), 'objects' => array(), 'scripts' => array())
+            'entities' => array('classes' => array(), 'objects' => array(), 'scripts' => array(), 'scenes' => array())
         );
 
         // Classes first: objects may depend on them.
@@ -309,6 +368,22 @@ class starter_kit extends module
                     return $result;
                 }
                 $record['entities']['scripts'][$entity['title']] = $script_record;
+            }
+        }
+
+        // Scenes come last: their elements may call methods of the objects above.
+        if (isset($package['scenes']) && is_array($package['scenes'])) {
+            foreach ($package['scenes'] as $entity) {
+                $scene_record = $this->createScene($entity);
+                if ($scene_record === false) {
+                    $result['messages'][] = array(
+                        'CLASS' => 'danger',
+                        'TEXT' => $this->lang($package['title_key'], $package_id) . ': cannot create scene ' . $this->resolveText($entity['title'])
+                    );
+                    $this->rollbackRecord($record);
+                    return $result;
+                }
+                $record['entities']['scenes'][$scene_record['title']] = $scene_record;
             }
         }
 
@@ -455,18 +530,103 @@ class starter_kit extends module
     }
 
     /**
+     * Create a scene with button elements. Each element runs an object method
+     * on click (scenes module: ACTION_OBJECT + ACTION_METHOD).
+     *
+     * Expected package format:
+     *   'scenes' => array(
+     *       array(
+     *           'title' => '...', 'priority' => 10,
+     *           'elements' => array(
+     *               array('title' => '...', 'type' => 'button',
+     *                     'top' => 100, 'left' => 100, 'width' => 240, 'height' => 60,
+     *                     'action_object' => 'StarterScenes', 'action_method' => 'goodMorning')
+     *           )
+     *       )
+     *   )
+     */
+    function createScene($entity)
+    {
+        $title = $this->resolveText($entity['title']);
+        $scene = array(
+            'TITLE' => $title,
+            'PRIORITY' => isset($entity['priority']) ? (int)$entity['priority'] : 0,
+            'HIDDEN' => 0
+        );
+        $scene['ID'] = SQLInsert('scenes', $scene);
+        if (!$scene['ID']) {
+            return false;
+        }
+
+        $record = array(
+            'id' => (int)$scene['ID'],
+            'title' => $title,
+            'elements' => array()
+        );
+        $elements = isset($entity['elements']) && is_array($entity['elements']) ? $entity['elements'] : array();
+        $priority = 10;
+        foreach ($elements as $element) {
+            $element_title = isset($element['title']) ? $this->resolveText($element['title']) : '';
+            $element_rec = array(
+                'SCENE_ID' => (int)$scene['ID'],
+                'TITLE' => $element_title,
+                'TYPE' => isset($element['type']) ? $element['type'] : 'button',
+                'TOP' => isset($element['top']) ? (int)$element['top'] : 100,
+                'LEFT' => isset($element['left']) ? (int)$element['left'] : 100,
+                'WIDTH' => isset($element['width']) ? (int)$element['width'] : 200,
+                'HEIGHT' => isset($element['height']) ? (int)$element['height'] : 60,
+                'CSS_STYLE' => 'default',
+                'PRIORITY' => $priority
+            );
+            $element_rec['ID'] = SQLInsert('elements', $element_rec);
+            if (!$element_rec['ID']) {
+                $this->deleteSceneRaw($scene['ID']);
+                return false;
+            }
+            $priority += 10;
+
+            $state = array(
+                'ELEMENT_ID' => (int)$element_rec['ID'],
+                'TITLE' => 'default',
+                'HTML' => $element_title
+            );
+            if (!empty($element['action_object']) && !empty($element['action_method'])) {
+                $state['ACTION_OBJECT'] = $element['action_object'];
+                $state['ACTION_METHOD'] = $element['action_method'];
+            }
+            $state['ID'] = SQLInsert('elm_states', $state);
+            if (!$state['ID']) {
+                $this->deleteSceneRaw($scene['ID']);
+                return false;
+            }
+
+            $record['elements'][] = array(
+                'id' => (int)$element_rec['ID'],
+                'state_id' => (int)$state['ID'],
+                'title' => $element_title,
+                'html' => $element_title,
+                'action_object' => isset($state['ACTION_OBJECT']) ? $state['ACTION_OBJECT'] : '',
+                'action_method' => isset($state['ACTION_METHOD']) ? $state['ACTION_METHOD'] : ''
+            );
+        }
+        return $record;
+    }
+
+    /**
      * Removes entities created during a failed install attempt.
      */
     function rollbackRecord($record)
     {
         $fake = array('entities' => $record['entities']);
-        foreach (array('scripts', 'objects', 'classes') as $type) {
+        foreach (array('scripts', 'scenes', 'objects', 'classes') as $type) {
             if (!isset($fake['entities'][$type])) {
                 continue;
             }
             foreach ($fake['entities'][$type] as $entity) {
                 if ($type == 'scripts') {
                     SQLExec("DELETE FROM scripts WHERE ID=" . (int)$entity['id']);
+                } elseif ($type == 'scenes') {
+                    $this->deleteSceneRaw($entity['id']);
                 } elseif ($type == 'objects') {
                     deleteObject((int)$entity['id']);
                 } elseif ($type == 'classes') {
@@ -485,10 +645,30 @@ class starter_kit extends module
         }
         $package = $this->packages[$package_id];
         $record = $this->config['installed'][$package_id];
+
+        $required_by = array();
+        foreach ($this->packages as $other_id => $other_package) {
+            if ($other_id == $package_id || !isset($this->config['installed'][$other_id])) {
+                continue;
+            }
+            if (isset($other_package['requires']) && in_array($package_id, $other_package['requires'], true)) {
+                $required_by[] = $this->lang($other_package['title_key'], $other_id);
+            }
+        }
+        if (count($required_by)) {
+            $result['messages'][] = array(
+                'CLASS' => 'danger',
+                'TEXT' => $this->lang($package['title_key'], $package_id) . ': ' .
+                    $this->lang('STARTER_KIT_REQUIRED_BY') . ' ' . implode(', ', $required_by) .
+                    '. ' . $this->lang('STARTER_KIT_UNINSTALL_DEPENDENTS')
+            );
+            return $result;
+        }
+
         $skipped = array();
 
-        // Reverse order: scripts, objects, classes.
-        foreach (array('scripts', 'objects', 'classes') as $type) {
+        // Reverse order: scripts, scenes, objects, classes.
+        foreach (array('scripts', 'scenes', 'objects', 'classes') as $type) {
             if (!isset($record['entities'][$type])) {
                 continue;
             }
@@ -496,6 +676,8 @@ class starter_kit extends module
                 $status = 'removed';
                 if ($type == 'scripts') {
                     $status = $this->removeScript($entity);
+                } elseif ($type == 'scenes') {
+                    $status = $this->removeScene($entity);
                 } elseif ($type == 'objects') {
                     $status = $this->removeObject($entity);
                 } elseif ($type == 'classes') {
@@ -510,7 +692,7 @@ class starter_kit extends module
         }
 
         $empty = true;
-        foreach (array('scripts', 'objects', 'classes') as $type) {
+        foreach (array('scripts', 'scenes', 'objects', 'classes') as $type) {
             if (isset($record['entities'][$type]) && count($record['entities'][$type])) {
                 $empty = false;
             }
@@ -545,6 +727,77 @@ class starter_kit extends module
         }
         SQLExec("DELETE FROM scripts WHERE ID=" . (int)$entity['id']);
         return 'removed';
+    }
+
+    /**
+     * Remove a scene only if it still looks exactly as installed: same title,
+     * same set of elements, same button labels and actions.
+     */
+    function removeScene($entity)
+    {
+        $scene = SQLSelectOne("SELECT * FROM scenes WHERE ID=" . (int)$entity['id']);
+        if (!$scene['ID']) {
+            return 'removed';
+        }
+        if ($scene['TITLE'] != $entity['title']) {
+            return 'skipped';
+        }
+        $elements = SQLSelect("SELECT * FROM elements WHERE SCENE_ID=" . (int)$entity['id']);
+        $stored = isset($entity['elements']) && is_array($entity['elements']) ? $entity['elements'] : array();
+        if (count($elements) != count($stored)) {
+            return 'skipped'; // user added or removed elements
+        }
+        $stored_by_id = array();
+        foreach ($stored as $item) {
+            $stored_by_id[(int)$item['id']] = $item;
+        }
+        foreach ($elements as $element) {
+            $element_id = (int)$element['ID'];
+            if (!isset($stored_by_id[$element_id])) {
+                return 'skipped';
+            }
+            $expected = $stored_by_id[$element_id];
+            $expected_title = isset($expected['title']) ? (string)$expected['title'] : '';
+            $expected_html = isset($expected['html']) ? (string)$expected['html'] : '';
+            $expected_object = isset($expected['action_object']) ? (string)$expected['action_object'] : '';
+            $expected_method = isset($expected['action_method']) ? (string)$expected['action_method'] : '';
+            if ((string)$element['TITLE'] !== $expected_title) {
+                return 'skipped';
+            }
+            if (!isset($expected['state_id'])) {
+                return 'skipped';
+            }
+            $state = SQLSelectOne("SELECT * FROM elm_states WHERE ID=" . (int)$expected['state_id']);
+            if (!$state['ID']) {
+                return 'skipped';
+            }
+            if ((string)$state['HTML'] !== $expected_html) {
+                return 'skipped'; // user changed the button label
+            }
+            if ((string)$state['ACTION_OBJECT'] !== $expected_object) {
+                return 'skipped';
+            }
+            if ((string)$state['ACTION_METHOD'] !== $expected_method) {
+                return 'skipped';
+            }
+        }
+        $this->deleteSceneRaw($entity['id']);
+        return 'removed';
+    }
+
+    /**
+     * Delete a scene with all its elements and element states (no safety checks).
+     */
+    function deleteSceneRaw($scene_id)
+    {
+        $elements = SQLSelect("SELECT ID FROM elements WHERE SCENE_ID=" . (int)$scene_id);
+        if (is_array($elements)) {
+            foreach ($elements as $element) {
+                SQLExec("DELETE FROM elm_states WHERE ELEMENT_ID=" . (int)$element['ID']);
+            }
+        }
+        SQLExec("DELETE FROM elements WHERE SCENE_ID=" . (int)$scene_id);
+        SQLExec("DELETE FROM scenes WHERE ID=" . (int)$scene_id);
     }
 
     function removeObject($entity)
