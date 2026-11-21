@@ -7,16 +7,18 @@
 - Package `clock_chime`: `SK_Clock` / `StarterClock`, `onNewMinute/Hour/Day`.
 - Package `sun_times`: `SK_Sun` / `StarterSun`, offline `date_sun_info()`.
 - Module-local `lang/default.php` + `lang/ru.php` (no core dictionary edits).
+- Package `basic_entities`: `SK_Device` → `SK_Lamp` / `SK_Sensor` /
+  `SK_Button` / `SK_Thermostat`, `SK_Room`, demo objects and `SK_EntitiesDemo`.
+- `{{TOKEN}}` text substitution at install time (language-neutral packages).
+- Static package validator: `php tests/package_validate.php`.
 
 ## Next packages
 
-1. **Basic entities** — virtual room, lamp, sensor, button, thermostat;
-   properties, onchange methods and a small script.
-2. **Scenes** — Good morning / Good night / Away / Home on virtual devices.
-3. **Scripts** — welcome message, connection check, presence simulation,
+1. **Scenes** — Good morning / Good night / Away / Home on virtual devices.
+2. **Scripts** — welcome message, connection check, presence simulation,
    simple schedule; with comments and hints.
-4. **Panel** — example home page blocks/widgets and a small layout.
-5. **Hints** — per-package “what it shows” and “how to adapt” notes.
+3. **Panel** — example home page blocks/widgets and a small layout.
+4. **Hints** — per-package “what it shows” and “how to adapt” notes.
 
 ## Later
 

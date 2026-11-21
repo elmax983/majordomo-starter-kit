@@ -47,7 +47,12 @@ sudo ./install.sh /var/www
   закат, гражданские/навигационные/астрономические сумерки и `dayPart` на
   `date_sun_info()`, оффлайн по координатам.
 
-Планируются: базовые сущности, сцены, скрипты, блоки панели, подсказки.
+- **Basic entities** — `SK_Device` → `SK_Lamp` / `SK_Sensor` / `SK_Button` /
+  `SK_Thermostat`, класс `SK_Room`, демо-объекты `StarterLamp`,
+  `StarterSensor`, `StarterButton`, `StarterThermostat`, `StarterRoom` и скрипт
+  `SK_EntitiesDemo`: свойства, методы, onchange-связки, простая комната-сводка.
+
+Планируются: сцены, скрипты, блоки панели, подсказки.
 
 ## Безопасность
 

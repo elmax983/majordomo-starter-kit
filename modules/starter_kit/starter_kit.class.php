@@ -27,6 +27,11 @@ class starter_kit extends module
      */
     var $selected = array();
 
+    /**
+     * @var array {{TOKEN}} => LANG_KEY map of the package being installed
+     */
+    var $texts = array();
+
     function __construct()
     {
         $this->name = 'starter_kit';
@@ -102,6 +107,29 @@ class starter_kit extends module
             return constant($constant);
         }
         return $fallback != '' ? $fallback : $key;
+    }
+
+    /**
+     * Replace {{TOKEN}} placeholders with module-local translations.
+     *
+     * Packages keep their generated content language-neutral and declare a
+     * "texts" map: TOKEN => LANG_KEY. The replacement happens at install time,
+     * so the created entities contain plain text in the current language.
+     * Labels must not contain single quotes (method code is single-quoted PHP).
+     */
+    function resolveText($text)
+    {
+        if (!is_string($text) || strpos($text, '{{') === false) {
+            return $text;
+        }
+        $replace = array();
+        foreach ($this->texts as $token => $key) {
+            $replace['{{' . $token . '}}'] = $this->lang($key, $token);
+        }
+        if (!count($replace)) {
+            return $text;
+        }
+        return str_replace(array_keys($replace), array_values($replace), $text);
     }
 
     function run()
@@ -230,6 +258,8 @@ class starter_kit extends module
             return $result;
         }
 
+        $this->texts = isset($package['texts']) && is_array($package['texts']) ? $package['texts'] : array();
+
         $record = array(
             'version' => isset($package['version']) ? (int)$package['version'] : 1,
             'installed_at' => date('Y-m-d H:i:s'),
@@ -299,7 +329,7 @@ class starter_kit extends module
             return false;
         }
         if (isset($entity['description'])) {
-            $class_rec['DESCRIPTION'] = $entity['description'];
+            $class_rec['DESCRIPTION'] = $this->resolveText($entity['description']);
             SQLUpdate('classes', $class_rec);
         }
 
@@ -312,16 +342,37 @@ class starter_kit extends module
 
         if (isset($entity['properties']) && is_array($entity['properties'])) {
             foreach ($entity['properties'] as $name => $options) {
+                $options = is_array($options) ? $options : array();
                 $keep_history = isset($options['keep_history']) ? (int)$options['keep_history'] : 0;
+                $onchange = isset($options['onchange']) ? trim($options['onchange']) : '';
                 $property_id = addClassProperty($entity['title'], $name, $keep_history);
-                if ($property_id) {
-                    $record['properties'][$name] = (int)$property_id;
+                if (!$property_id) {
+                    continue;
                 }
+                if ($onchange != '' || isset($options['description'])) {
+                    $property_rec = SQLSelectOne("SELECT * FROM properties WHERE ID=" . (int)$property_id);
+                    if ($property_rec['ID']) {
+                        if ($onchange != '') {
+                            $property_rec['ONCHANGE'] = $onchange;
+                        }
+                        if (isset($options['description'])) {
+                            $property_rec['DESCRIPTION'] = $this->resolveText($options['description']);
+                        }
+                        SQLUpdate('properties', $property_rec);
+                    }
+                }
+                // Array form keeps the onchange hook for safe uninstall; the
+                // plain integer form of older packages is still supported.
+                $record['properties'][$name] = array(
+                    'id' => (int)$property_id,
+                    'onchange' => $onchange
+                );
             }
         }
 
         if (isset($entity['methods']) && is_array($entity['methods'])) {
-            foreach ($entity['methods'] as $name => $code) {
+            foreach ($entity['methods'] as $name => $raw_code) {
+                $code = $this->resolveText($raw_code);
                 $method_id = addClassMethod($entity['title'], $name, $code);
                 if ($method_id) {
                     $record['methods'][$name] = array(
@@ -348,7 +399,7 @@ class starter_kit extends module
             return false;
         }
         if (isset($entity['description'])) {
-            $object_rec['DESCRIPTION'] = $entity['description'];
+            $object_rec['DESCRIPTION'] = $this->resolveText($entity['description']);
             SQLUpdate('objects', $object_rec);
         }
 
@@ -362,12 +413,13 @@ class starter_kit extends module
 
         if (isset($entity['properties']) && is_array($entity['properties'])) {
             foreach ($entity['properties'] as $name => $value) {
-                setGlobal($entity['title'] . '.' . $name, $value);
+                setGlobal($entity['title'] . '.' . $name, $this->resolveText($value));
             }
         }
 
         if (isset($entity['methods']) && is_array($entity['methods'])) {
-            foreach ($entity['methods'] as $name => $code) {
+            foreach ($entity['methods'] as $name => $raw_code) {
+                $code = $this->resolveText($raw_code);
                 $method = array(
                     'OBJECT_ID' => (int)$object_id,
                     'CLASS_ID' => 0,
@@ -387,17 +439,18 @@ class starter_kit extends module
 
     function createScript($entity)
     {
+        $code = $this->resolveText($entity['code']);
         $script = array(
             'TITLE' => $entity['title'],
-            'CODE' => $entity['code'],
-            'DESCRIPTION' => isset($entity['description']) ? $entity['description'] : '',
+            'CODE' => $code,
+            'DESCRIPTION' => isset($entity['description']) ? $this->resolveText($entity['description']) : '',
             'TYPE' => 0
         );
         $script['ID'] = SQLInsert('scripts', $script);
         return array(
             'id' => (int)$script['ID'],
             'title' => $entity['title'],
-            'hash' => md5(trim($entity['code']))
+            'hash' => md5(trim($code))
         );
     }
 
@@ -536,10 +589,14 @@ class starter_kit extends module
         if ($object['ID']) {
             return 'skipped'; // still used by objects
         }
-        $properties = SQLSelect("SELECT ID, TITLE FROM properties WHERE CLASS_ID=" . (int)$entity['id'] . " AND OBJECT_ID=0");
+        $properties = SQLSelect("SELECT ID, TITLE, ONCHANGE FROM properties WHERE CLASS_ID=" . (int)$entity['id'] . " AND OBJECT_ID=0");
         foreach ($properties as $property) {
             if (!isset($entity['properties'][$property['TITLE']])) {
                 return 'skipped'; // user added a class property
+            }
+            $meta = $entity['properties'][$property['TITLE']];
+            if (is_array($meta) && isset($meta['onchange']) && $meta['onchange'] != '' && $property['ONCHANGE'] != $meta['onchange']) {
+                return 'skipped'; // user changed the onchange hook
             }
         }
         $methods = SQLSelect("SELECT ID, TITLE, CODE FROM methods WHERE CLASS_ID=" . (int)$entity['id'] . " AND OBJECT_ID=0");
