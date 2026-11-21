@@ -1,0 +1,60 @@
+<div class="row">
+    <div class="col-md-12">
+        <p class="text-muted"><#LANG_STARTER_KIT_INTRO#></p>
+
+        [#if MESSAGES#]
+        <div style="margin-bottom:15px;">
+            [#begin MESSAGES#]
+            <div class="alert alert-[#CLASS#]" style="padding:8px 12px;margin-bottom:6px;">[#TEXT#]</div>
+            [#end MESSAGES#]
+        </div>
+        [#endif#]
+
+        <form action="?" method="post">
+            <input type="hidden" name="action" value="starter_kit">
+
+            <table class="table table-striped table-hover">
+                <thead>
+                <tr>
+                    <th style="width:30px;">&nbsp;</th>
+                    <th><#LANG_STARTER_KIT_PACKAGE#></th>
+                    <th style="width:180px;"><#LANG_STARTER_KIT_STATUS#></th>
+                </tr>
+                </thead>
+                <tbody>
+                [#begin PACKAGES#]
+                <tr>
+                    <td><input type="checkbox" name="pkg[]" value="[#ID#]"></td>
+                    <td>
+                        <b>[#TITLE#]</b>
+                        <div class="text-muted">[#DESCRIPTION#]</div>
+                        [#if NOTE#]
+                        <div class="small" style="color:#a94442;">[#NOTE#]</div>
+                        [#endif#]
+                    </td>
+                    <td>
+                        [#if INSTALLED="1"#]
+                        <span class="label label-success"><#LANG_STARTER_KIT_INSTALLED#></span>
+                        <div class="small text-muted">[#INSTALLED_DATE#]</div>
+                        [#else#]
+                        <span class="label label-default"><#LANG_STARTER_KIT_NOT_INSTALLED#></span>
+                        [#endif#]
+                    </td>
+                </tr>
+                [#end PACKAGES#]
+                </tbody>
+            </table>
+
+            <p>
+                <button type="submit" name="mode" value="install" class="btn btn-success">
+                    <#LANG_STARTER_KIT_INSTALL_SELECTED#>
+                </button>
+                <button type="submit" name="mode" value="uninstall" class="btn btn-danger"
+                        onclick="return confirm('<#LANG_STARTER_KIT_CONFIRM_UNINSTALL#>');">
+                    <#LANG_STARTER_KIT_UNINSTALL_SELECTED#>
+                </button>
+            </p>
+            <p class="small text-muted"><#LANG_STARTER_KIT_UNINSTALL_WARNING#></p>
+        </form>
+    </div>
+</div>

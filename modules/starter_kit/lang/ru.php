@@ -1,0 +1,23 @@
+<?php
+return array (
+  'STARTER_KIT_TITLE' => 'Starter Kit (наборы примеров)',
+  'STARTER_KIT_INTRO' => 'Необязательные наборы примеров для свежей установки. Создаются обычные классы, объекты и скрипты MajorDoMo; ядро и схема базы данных не изменяются.',
+  'STARTER_KIT_PACKAGE' => 'Набор',
+  'STARTER_KIT_STATUS' => 'Статус',
+  'STARTER_KIT_INSTALLED' => 'Установлен',
+  'STARTER_KIT_NOT_INSTALLED' => 'Не установлен',
+  'STARTER_KIT_INSTALL_SELECTED' => 'Установить выбранные',
+  'STARTER_KIT_UNINSTALL_SELECTED' => 'Удалить выбранные',
+  'STARTER_KIT_CONFIRM_UNINSTALL' => 'Удалить выбранные наборы?',
+  'STARTER_KIT_UNINSTALL_WARNING' => 'Удаление затрагивает только сущности, созданные этим модулем и не изменённые пользователем. Изменённые или уже используемые сущности остаются, о них будет сообщение.',
+  'STARTER_KIT_NOTHING_SELECTED' => 'Наборы не выбраны.',
+  'STARTER_KIT_ALREADY_INSTALLED' => 'уже установлен, пропущено',
+  'STARTER_KIT_CONFLICT' => 'Найдены существующие сущности с такими же именами, набор пропущен',
+  'STARTER_KIT_INSTALL_DONE' => 'установлен',
+  'STARTER_KIT_UNINSTALL_DONE' => 'удалён',
+  'STARTER_KIT_SKIPPED_MODIFIED' => 'часть сущностей изменена или используется и была оставлена',
+  'STARTER_KIT_PKG_CLOCK_TITLE' => 'Часы и бой',
+  'STARTER_KIT_PKG_CLOCK_DESC' => 'Показывает штатные хуки onNewMinute, onNewHour и onNewDay: виртуальные часы, тихие часы и необязательный голосовой бой.',
+  'STARTER_KIT_PKG_SUN_TITLE' => 'Время и солнце',
+  'STARTER_KIT_PKG_SUN_DESC' => 'Офлайн вычисляет рассвет, закат, гражданские, навигационные и астрономические сумерки по заданным координатам и обновляет текущую часть суток.',
+);

@@ -1,0 +1,23 @@
+<?php
+return array (
+  'STARTER_KIT_TITLE' => 'Starter Kit',
+  'STARTER_KIT_INTRO' => 'Optional demo packages for a fresh installation. Entities are created as regular MajorDoMo classes, objects and scripts; nothing is changed in the core or in the database schema.',
+  'STARTER_KIT_PACKAGE' => 'Package',
+  'STARTER_KIT_STATUS' => 'Status',
+  'STARTER_KIT_INSTALLED' => 'Installed',
+  'STARTER_KIT_NOT_INSTALLED' => 'Not installed',
+  'STARTER_KIT_INSTALL_SELECTED' => 'Install selected',
+  'STARTER_KIT_UNINSTALL_SELECTED' => 'Uninstall selected',
+  'STARTER_KIT_CONFIRM_UNINSTALL' => 'Remove the selected packages?',
+  'STARTER_KIT_UNINSTALL_WARNING' => 'Uninstall removes only entities created by this module and left unchanged. Modified or already used entities are kept and reported.',
+  'STARTER_KIT_NOTHING_SELECTED' => 'No packages selected.',
+  'STARTER_KIT_ALREADY_INSTALLED' => 'already installed, skipped',
+  'STARTER_KIT_CONFLICT' => 'Existing entities with the same names were found, package skipped',
+  'STARTER_KIT_INSTALL_DONE' => 'installed',
+  'STARTER_KIT_UNINSTALL_DONE' => 'uninstalled',
+  'STARTER_KIT_SKIPPED_MODIFIED' => 'some entities were modified or are in use and were kept',
+  'STARTER_KIT_PKG_CLOCK_TITLE' => 'Clock and chime',
+  'STARTER_KIT_PKG_CLOCK_DESC' => 'Shows the built-in onNewMinute, onNewHour and onNewDay hooks: a virtual clock, quiet hours and an optional spoken chime.',
+  'STARTER_KIT_PKG_SUN_TITLE' => 'Time and sun',
+  'STARTER_KIT_PKG_SUN_DESC' => 'Calculates sunrise, sunset, civil, nautical and astronomical twilight offline for the configured coordinates, and updates the current day part.',
+);
