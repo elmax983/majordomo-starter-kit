@@ -12,8 +12,8 @@
 
 return array(
     'id' => 'scenes',
-    'version' => 1,
-    'requires' => array('basic_entities'),
+    'version' => 2,
+    'requires' => array('basic_entities', 'modes'),
     'title_key' => 'STARTER_KIT_PKG_SCENES_TITLE',
     'description_key' => 'STARTER_KIT_PKG_SCENES_DESC',
     'hints' => array(
@@ -26,7 +26,9 @@ return array(
         'SCENE_MORNING' => 'STARTER_KIT_TEXT_SCENE_MORNING',
         'SCENE_NIGHT' => 'STARTER_KIT_TEXT_SCENE_NIGHT',
         'SCENE_AWAY' => 'STARTER_KIT_TEXT_SCENE_AWAY',
-        'SCENE_HOME' => 'STARTER_KIT_TEXT_SCENE_HOME'
+        'SCENE_HOME' => 'STARTER_KIT_TEXT_SCENE_HOME',
+        'SCENE_MOVIE' => 'STARTER_KIT_TEXT_SCENE_MOVIE',
+        'SCENE_GUEST' => 'STARTER_KIT_TEXT_SCENE_GUEST'
     ),
     'classes' => array(
         array(
@@ -39,7 +41,10 @@ return array(
                 'morningLevel' => array(),
                 'homeLevel' => array(),
                 'dayTarget' => array(),
-                'nightTarget' => array()
+                'nightTarget' => array(),
+                'movieLevel' => array(),
+                'guestLevel' => array(),
+                'guestTarget' => array()
             ),
             'methods' => array(
                 'goodMorning' => <<<'CODE'
@@ -90,6 +95,31 @@ $this->setProperty('activeScene', 'home');
 $this->setProperty('lastActivated', date('Y-m-d H:i:s'));
 callMethod('StarterRoom.refresh');
 CODE
+                ,
+                'movieNight' => <<<'CODE'
+// Scene "Movie night": dim light and a comfortable temperature.
+callMethod('StarterLamp.setBrightness', array('level' => (int)$this->getProperty('movieLevel')));
+sg('StarterThermostat.mode', 'heat');
+sg('StarterThermostat.targetTemp', (float)$this->getProperty('dayTarget'));
+
+$this->setProperty('presence', 1);
+$this->setProperty('activeScene', 'movie');
+$this->setProperty('lastActivated', date('Y-m-d H:i:s'));
+callMethod('StarterRoom.refresh');
+CODE
+                ,
+                'guest' => <<<'CODE'
+// Scene "Guest": somebody is visiting. Guest mode handles the devices,
+// the scene only sets it and records the active scene.
+callMethod('StarterModes.setMode', array('mode' => 'guest', 'active' => 1));
+callMethod('StarterLamp.setBrightness', array('level' => (int)$this->getProperty('guestLevel')));
+sg('StarterThermostat.targetTemp', (float)$this->getProperty('guestTarget'));
+
+$this->setProperty('presence', 1);
+$this->setProperty('activeScene', 'guest');
+$this->setProperty('lastActivated', date('Y-m-d H:i:s'));
+callMethod('StarterRoom.refresh');
+CODE
             )
         )
     ),
@@ -104,7 +134,10 @@ CODE
                 'morningLevel' => 70,
                 'homeLevel' => 40,
                 'dayTarget' => 22,
-                'nightTarget' => 18
+                'nightTarget' => 18,
+                'movieLevel' => 15,
+                'guestLevel' => 40,
+                'guestTarget' => 21
             )
         )
     ),
@@ -142,6 +175,22 @@ CODE
             )
         ),
         array(
+            'title' => '{{SCENE_MOVIE}}',
+            'priority' => 25,
+            'elements' => array(
+                array(
+                    'title' => '{{SCENE_MOVIE}}',
+                    'type' => 'button',
+                    'top' => 100,
+                    'left' => 100,
+                    'width' => 260,
+                    'height' => 60,
+                    'action_object' => 'StarterScenes',
+                    'action_method' => 'movieNight'
+                )
+            )
+        ),
+        array(
             'title' => '{{SCENE_AWAY}}',
             'priority' => 20,
             'elements' => array(
@@ -170,6 +219,22 @@ CODE
                     'height' => 60,
                     'action_object' => 'StarterScenes',
                     'action_method' => 'home'
+                )
+            )
+        ),
+        array(
+            'title' => '{{SCENE_GUEST}}',
+            'priority' => 5,
+            'elements' => array(
+                array(
+                    'title' => '{{SCENE_GUEST}}',
+                    'type' => 'button',
+                    'top' => 100,
+                    'left' => 100,
+                    'width' => 260,
+                    'height' => 60,
+                    'action_object' => 'StarterScenes',
+                    'action_method' => 'guest'
                 )
             )
         )

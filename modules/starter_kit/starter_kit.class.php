@@ -159,9 +159,9 @@ class starter_kit extends module
                 );
             }
 
-            if ($mode == 'install') {
-                // Install dependencies first, even if the user selected the
-                // packages in a different order.
+            if ($mode == 'install' || $mode == 'update') {
+                // Install/update dependencies first, even if the user selected
+                // the packages in a different order.
                 $selected = $this->sortByRequirements($selected);
             } elseif ($mode == 'uninstall') {
                 // Remove dependent packages before their dependencies.
@@ -171,6 +171,8 @@ class starter_kit extends module
             foreach ($selected as $package_id) {
                 if ($mode == 'install') {
                     $result = $this->installPackage($package_id);
+                } elseif ($mode == 'update') {
+                    $result = $this->updatePackage($package_id);
                 } elseif ($mode == 'uninstall') {
                     $result = $this->uninstallPackage($package_id);
                 } else {
@@ -502,6 +504,444 @@ class starter_kit extends module
             'TEXT' => $this->lang($package['title_key'], $package_id) . ': ' . $this->lang('STARTER_KIT_INSTALL_DONE')
         );
         return $result;
+    }
+
+    /**
+     * Check package requirements against the installed packages.
+     */
+    function getMissingRequirements($package)
+    {
+        $missing = array();
+        if (isset($package['requires']) && is_array($package['requires'])) {
+            foreach ($package['requires'] as $required_id) {
+                if (!isset($this->config['installed'][$required_id])) {
+                    $missing[] = isset($this->packages[$required_id])
+                        ? $this->lang($this->packages[$required_id]['title_key'], $required_id)
+                        : $required_id;
+                }
+            }
+        }
+        return $missing;
+    }
+
+    /**
+     * Update an installed package to the version from packages/.
+     *
+     * Updates are additive and conservative:
+     * - new classes / objects / scripts / scenes / layouts / text files are created;
+     * - new properties and methods are added to classes/objects created by this module;
+     * - existing scripts, layouts and text files are updated only if they were
+     *   not modified by the user;
+     * - existing scenes are never rewritten (use uninstall/install to reset).
+     */
+    function updatePackage($package_id)
+    {
+        $result = array('ok' => false, 'messages' => array());
+        if (!isset($this->packages[$package_id])) {
+            $result['messages'][] = array('CLASS' => 'danger', 'TEXT' => 'Unknown package: ' . $package_id);
+            return $result;
+        }
+        if (!isset($this->config['installed'][$package_id])) {
+            $result['messages'][] = array(
+                'CLASS' => 'warning',
+                'TEXT' => $this->lang($this->packages[$package_id]['title_key'], $package_id) . ': ' .
+                    $this->lang('STARTER_KIT_UPDATE_NOT_INSTALLED')
+            );
+            return $result;
+        }
+
+        $package = $this->packages[$package_id];
+        $this->texts = isset($package['texts']) && is_array($package['texts']) ? $package['texts'] : array();
+        $record = $this->config['installed'][$package_id];
+        $current_version = isset($record['version']) ? (int)$record['version'] : 0;
+        $package_version = isset($package['version']) ? (int)$package['version'] : 1;
+        $title = $this->lang($package['title_key'], $package_id);
+
+        if ($package_version <= $current_version) {
+            $result['ok'] = true;
+            $result['messages'][] = array(
+                'CLASS' => 'info',
+                'TEXT' => $title . ': ' . $this->lang('STARTER_KIT_UPDATE_UP_TO_DATE')
+            );
+            return $result;
+        }
+
+        $missing = $this->getMissingRequirements($package);
+        if (count($missing)) {
+            $result['messages'][] = array(
+                'CLASS' => 'danger',
+                'TEXT' => $title . ': ' . $this->lang('STARTER_KIT_REQUIRES') . ' ' . implode(', ', $missing) .
+                    ' (' . $this->lang('STARTER_KIT_REQUIRES_MISSING') . ')'
+            );
+            return $result;
+        }
+
+        // Only new top-level entities take part in conflict detection.
+        $filtered = array('id' => $package_id, 'texts' => isset($package['texts']) ? $package['texts'] : array());
+        foreach (array('classes', 'objects', 'scripts', 'scenes', 'layouts', 'text_files') as $type) {
+            if (!isset($package[$type]) || !is_array($package[$type])) {
+                continue;
+            }
+            foreach ($package[$type] as $entity) {
+                $key = ($type == 'text_files') ? $entity['name'] : $entity['title'];
+                if (!isset($record['entities'][$type][$key])) {
+                    $filtered[$type][] = $entity;
+                }
+            }
+        }
+        $conflicts = $this->detectConflicts($filtered);
+        if (count($conflicts)) {
+            $result['messages'][] = array(
+                'CLASS' => 'danger',
+                'TEXT' => $title . ': ' . $this->lang('STARTER_KIT_CONFLICT') . ' (' . implode(', ', $conflicts) . ')'
+            );
+            return $result;
+        }
+
+        $skipped = array();
+        $added = 0;
+
+        // Existing classes may get new properties and methods.
+        if (isset($package['classes']) && is_array($package['classes'])) {
+            foreach ($package['classes'] as $entity) {
+                if (isset($record['entities']['classes'][$entity['title']])) {
+                    $this->upgradeClass($entity, $record, $skipped);
+                } else {
+                    $new_record = $this->createClass($entity);
+                    if ($new_record === false) {
+                        $this->config['installed'][$package_id] = $record;
+                        $result['messages'][] = array(
+                            'CLASS' => 'danger',
+                            'TEXT' => $title . ': cannot create class ' . $entity['title']
+                        );
+                        return $result;
+                    }
+                    $record['entities']['classes'][$entity['title']] = $new_record;
+                    $added++;
+                }
+            }
+        }
+
+        if (isset($package['objects']) && is_array($package['objects'])) {
+            foreach ($package['objects'] as $entity) {
+                if (isset($record['entities']['objects'][$entity['title']])) {
+                    $this->upgradeObject($entity, $record, $skipped);
+                } else {
+                    $new_record = $this->createObject($entity);
+                    if ($new_record === false) {
+                        $this->config['installed'][$package_id] = $record;
+                        $result['messages'][] = array(
+                            'CLASS' => 'danger',
+                            'TEXT' => $title . ': cannot create object ' . $entity['title']
+                        );
+                        return $result;
+                    }
+                    $record['entities']['objects'][$entity['title']] = $new_record;
+                    $added++;
+                }
+            }
+        }
+
+        if (isset($package['text_files']) && is_array($package['text_files'])) {
+            foreach ($package['text_files'] as $entity) {
+                if (isset($record['entities']['text_files'][$entity['name']])) {
+                    $this->upgradeTextFile($entity, $record, $skipped);
+                } else {
+                    $new_record = $this->createTextFile($entity);
+                    if ($new_record === false) {
+                        $this->config['installed'][$package_id] = $record;
+                        $result['messages'][] = array(
+                            'CLASS' => 'danger',
+                            'TEXT' => $title . ': cannot create text file ' . $entity['name']
+                        );
+                        return $result;
+                    }
+                    $record['entities']['text_files'][$entity['name']] = $new_record;
+                    $added++;
+                }
+            }
+        }
+
+        if (isset($package['scripts']) && is_array($package['scripts'])) {
+            foreach ($package['scripts'] as $entity) {
+                if (isset($record['entities']['scripts'][$entity['title']])) {
+                    $this->upgradeScript($entity, $record, $skipped);
+                } else {
+                    $new_record = $this->createScript($entity);
+                    if ($new_record === false) {
+                        $this->config['installed'][$package_id] = $record;
+                        $result['messages'][] = array(
+                            'CLASS' => 'danger',
+                            'TEXT' => $title . ': cannot create script ' . $entity['title']
+                        );
+                        return $result;
+                    }
+                    $record['entities']['scripts'][$entity['title']] = $new_record;
+                    $added++;
+                }
+            }
+        }
+
+        if (isset($package['scenes']) && is_array($package['scenes'])) {
+            foreach ($package['scenes'] as $entity) {
+                $scene_title = $this->resolveText($entity['title']);
+                if (isset($record['entities']['scenes'][$scene_title])) {
+                    // Existing scenes are intentionally not rewritten.
+                    continue;
+                }
+                $new_record = $this->createScene($entity);
+                if ($new_record === false) {
+                    $this->config['installed'][$package_id] = $record;
+                    $result['messages'][] = array(
+                        'CLASS' => 'danger',
+                        'TEXT' => $title . ': cannot create scene ' . $scene_title
+                    );
+                    return $result;
+                }
+                $record['entities']['scenes'][$new_record['title']] = $new_record;
+                $added++;
+            }
+        }
+
+        if (isset($package['layouts']) && is_array($package['layouts'])) {
+            foreach ($package['layouts'] as $entity) {
+                $layout_title = $this->resolveText($entity['title']);
+                if (isset($record['entities']['layouts'][$layout_title])) {
+                    $this->upgradeLayout($entity, $record, $skipped);
+                } else {
+                    $new_record = $this->createLayout($entity);
+                    if ($new_record === false) {
+                        $this->config['installed'][$package_id] = $record;
+                        $result['messages'][] = array(
+                            'CLASS' => 'danger',
+                            'TEXT' => $title . ': cannot create layout ' . $layout_title
+                        );
+                        return $result;
+                    }
+                    $record['entities']['layouts'][$new_record['title']] = $new_record;
+                    $added++;
+                }
+            }
+        }
+
+        $record['version'] = $package_version;
+        $record['updated_at'] = date('Y-m-d H:i:s');
+        $this->config['installed'][$package_id] = $record;
+        $result['ok'] = true;
+        $result['messages'][] = array(
+            'CLASS' => 'success',
+            'TEXT' => $title . ': ' . $this->lang('STARTER_KIT_UPDATE_DONE') . ' v' .
+                $current_version . ' &rarr; v' . $package_version . ' (' . $added . ')'
+        );
+        if (count($skipped)) {
+            $result['messages'][] = array(
+                'CLASS' => 'warning',
+                'TEXT' => $title . ': ' . $this->lang('STARTER_KIT_UPDATE_SKIPPED') . ' (' . implode(', ', $skipped) . ')'
+            );
+        }
+        return $result;
+    }
+
+    /**
+     * Add new properties/methods/template to an existing class. Existing items
+     * and user-edited code are never overwritten.
+     */
+    function upgradeClass($entity, &$record, &$skipped)
+    {
+        $title = $entity['title'];
+        if (!isset($record['entities']['classes'][$title])) {
+            return;
+        }
+        $meta = $record['entities']['classes'][$title];
+        $rec = SQLSelectOne("SELECT * FROM classes WHERE ID=" . (int)$meta['id']);
+        if (!$rec['ID'] || $rec['TITLE'] != $title) {
+            $skipped[] = $title;
+            return;
+        }
+
+        if (isset($entity['properties']) && is_array($entity['properties'])) {
+            foreach ($entity['properties'] as $name => $options) {
+                if (isset($meta['properties'][$name])) {
+                    continue;
+                }
+                $options = is_array($options) ? $options : array();
+                $keep_history = isset($options['keep_history']) ? (int)$options['keep_history'] : 0;
+                $onchange = isset($options['onchange']) ? trim($options['onchange']) : '';
+                $property_id = addClassProperty($title, $name, $keep_history);
+                if (!$property_id) {
+                    continue;
+                }
+                if ($onchange != '' || isset($options['description'])) {
+                    $property_rec = SQLSelectOne("SELECT * FROM properties WHERE ID=" . (int)$property_id);
+                    if ($property_rec['ID']) {
+                        if ($onchange != '') {
+                            $property_rec['ONCHANGE'] = $onchange;
+                        }
+                        if (isset($options['description'])) {
+                            $property_rec['DESCRIPTION'] = $this->resolveText($options['description']);
+                        }
+                        SQLUpdate('properties', $property_rec);
+                    }
+                }
+                $meta['properties'][$name] = array('id' => (int)$property_id, 'onchange' => $onchange);
+            }
+        }
+
+        if (isset($entity['methods']) && is_array($entity['methods'])) {
+            foreach ($entity['methods'] as $name => $raw_code) {
+                if (isset($meta['methods'][$name])) {
+                    continue;
+                }
+                $code = $this->resolveText($raw_code);
+                $method_id = addClassMethod($title, $name, $code);
+                if ($method_id) {
+                    $meta['methods'][$name] = array('id' => (int)$method_id, 'hash' => md5(trim($code)));
+                }
+            }
+        }
+
+        if (isset($entity['template'])) {
+            $template = $this->resolveText($entity['template']);
+            if (isset($meta['template_hash'])) {
+                if (md5(trim((string)$rec['TEMPLATE'])) == $meta['template_hash']) {
+                    if ((string)$rec['TEMPLATE'] !== $template) {
+                        $rec['TEMPLATE'] = $template;
+                        SQLUpdate('classes', $rec);
+                    }
+                    $meta['template_hash'] = md5(trim($template));
+                } else {
+                    $skipped[] = $title . '.template';
+                }
+            } elseif (trim((string)$rec['TEMPLATE']) == '') {
+                $rec['TEMPLATE'] = $template;
+                SQLUpdate('classes', $rec);
+                $meta['template_hash'] = md5(trim($template));
+            } else {
+                $skipped[] = $title . '.template';
+            }
+        }
+
+        $record['entities']['classes'][$title] = $meta;
+        $this->refreshClassTree();
+    }
+
+    /**
+     * Add new object-level methods to an existing object. Property values are
+     * never touched: they may already contain user data.
+     */
+    function upgradeObject($entity, &$record, &$skipped)
+    {
+        $title = $entity['title'];
+        if (!isset($record['entities']['objects'][$title])) {
+            return;
+        }
+        $meta = $record['entities']['objects'][$title];
+        $rec = SQLSelectOne("SELECT * FROM objects WHERE ID=" . (int)$meta['id']);
+        if (!$rec['ID'] || $rec['TITLE'] != $title) {
+            $skipped[] = $title;
+            return;
+        }
+        if (isset($entity['methods']) && is_array($entity['methods'])) {
+            foreach ($entity['methods'] as $name => $raw_code) {
+                if (isset($meta['methods'][$name])) {
+                    continue;
+                }
+                $code = $this->resolveText($raw_code);
+                $method = array(
+                    'OBJECT_ID' => (int)$meta['id'],
+                    'CLASS_ID' => 0,
+                    'TITLE' => $name,
+                    'CODE' => $code
+                );
+                $method['ID'] = SQLInsert('methods', $method);
+                if ($method['ID']) {
+                    $meta['methods'][$name] = array('id' => (int)$method['ID'], 'hash' => md5(trim($code)));
+                }
+            }
+        }
+        $record['entities']['objects'][$title] = $meta;
+    }
+
+    function upgradeScript($entity, &$record, &$skipped)
+    {
+        $title = $entity['title'];
+        $meta = $record['entities']['scripts'][$title];
+        $rec = SQLSelectOne("SELECT * FROM scripts WHERE ID=" . (int)$meta['id']);
+        if (!$rec['ID'] || $rec['TITLE'] != $title) {
+            $skipped[] = $title;
+            return;
+        }
+        if (md5(trim($rec['CODE'])) != $meta['hash']) {
+            $skipped[] = $title;
+            return;
+        }
+        $code = $this->resolveText($entity['code']);
+        if ($code !== $rec['CODE']) {
+            $rec['CODE'] = $code;
+            $rec['DESCRIPTION'] = isset($entity['description']) ? $this->resolveText($entity['description']) : $rec['DESCRIPTION'];
+            SQLUpdate('scripts', $rec);
+        }
+        $meta['hash'] = md5(trim($code));
+        $record['entities']['scripts'][$title] = $meta;
+    }
+
+    function upgradeTextFile($entity, &$record, &$skipped)
+    {
+        $name = $entity['name'];
+        $meta = $record['entities']['text_files'][$name];
+        $path = ROOT . $meta['file'];
+        if (!is_file($path)) {
+            return;
+        }
+        $current = @file_get_contents($path);
+        if ($current === false || md5(trim($current)) != $meta['hash']) {
+            $skipped[] = $name;
+            return;
+        }
+        $content = $this->resolveText($entity['content']);
+        if ($content !== $current) {
+            if (!$this->writeManagedFile($meta['file'], $content)) {
+                $skipped[] = $name;
+                return;
+            }
+        }
+        $meta['hash'] = md5(trim($content));
+        $record['entities']['text_files'][$name] = $meta;
+    }
+
+    function upgradeLayout($entity, &$record, &$skipped)
+    {
+        $title = $this->resolveText($entity['title']);
+        $meta = $record['entities']['layouts'][$title];
+        $rec = SQLSelectOne("SELECT * FROM layouts WHERE ID=" . (int)$meta['id']);
+        if (!$rec['ID'] || $rec['TITLE'] != $title) {
+            $skipped[] = $title;
+            return;
+        }
+        if (md5(trim($rec['CODE'])) != $meta['hash']) {
+            $skipped[] = $title;
+            return;
+        }
+        if (!empty($meta['file'])) {
+            $path = ROOT . $meta['file'];
+            if (is_file($path)) {
+                $current = @file_get_contents($path);
+                if ($current === false || md5(trim($current)) != $meta['hash']) {
+                    $skipped[] = $title;
+                    return;
+                }
+            }
+        }
+        $code = $this->resolveText($entity['code']);
+        if ($code !== $rec['CODE']) {
+            $rec['CODE'] = $code;
+            SQLUpdate('layouts', $rec);
+            if (!empty($meta['file'])) {
+                $this->writeManagedFile($meta['file'], $code);
+            }
+        }
+        $meta['hash'] = md5(trim($code));
+        $record['entities']['layouts'][$title] = $meta;
     }
 
     function createClass($entity)

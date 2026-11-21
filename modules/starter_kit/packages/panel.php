@@ -13,8 +13,8 @@
 
 return array(
     'id' => 'panel',
-    'version' => 1,
-    'requires' => array('basic_entities', 'scenes', 'scripts'),
+    'version' => 2,
+    'requires' => array('basic_entities', 'modes', 'scenes', 'scripts', 'hints'),
     'title_key' => 'STARTER_KIT_PKG_PANEL_TITLE',
     'description_key' => 'STARTER_KIT_PKG_PANEL_DESC',
     'hints' => array(
@@ -31,6 +31,8 @@ return array(
         'CARD_ROOM' => 'STARTER_KIT_TEXT_CARD_ROOM',
         'CARD_SCENES' => 'STARTER_KIT_TEXT_CARD_SCENES',
         'CARD_SCRIPTS' => 'STARTER_KIT_TEXT_CARD_SCRIPTS',
+        'CARD_MODES' => 'STARTER_KIT_TEXT_CARD_MODES',
+        'CARD_HINTS' => 'STARTER_KIT_TEXT_CARD_HINTS',
         'LABEL_BRIGHTNESS' => 'STARTER_KIT_TEXT_LABEL_BRIGHTNESS',
         'LABEL_CURRENT' => 'STARTER_KIT_TEXT_LABEL_CURRENT',
         'LABEL_TARGET' => 'STARTER_KIT_TEXT_LABEL_TARGET',
@@ -40,6 +42,8 @@ return array(
         'LABEL_GREETING' => 'STARTER_KIT_TEXT_LABEL_GREETING',
         'LABEL_CONNECTION' => 'STARTER_KIT_TEXT_LABEL_CONNECTION',
         'LABEL_LAST_ACTION' => 'STARTER_KIT_TEXT_LABEL_LAST_ACTION',
+        'LABEL_MODES' => 'STARTER_KIT_TEXT_LABEL_MODES',
+        'LABEL_HINTS_UPDATED' => 'STARTER_KIT_TEXT_LABEL_HINTS_UPDATED',
         'OPEN_SCENES' => 'STARTER_KIT_TEXT_OPEN_SCENES'
     ),
     'layouts' => array(
@@ -106,6 +110,27 @@ return array(
                 <p style="margin-top:12px;">
                     <a class="btn btn-default btn-sm" href="<#ROOTHTML#>popup/scenes.html" target="_blank">{{OPEN_SCENES}}</a>
                 </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="panel panel-default">
+            <div class="panel-heading"><b>{{CARD_MODES}}</b></div>
+            <div class="panel-body">
+                <div style="font-size:20px;line-height:26px;">%StarterModes.summary|10%</div>
+                <div class="small text-muted">{{LABEL_MODES}}: %StarterModes.debug|30% / %StarterModes.guest|30% / %StarterModes.vacation|30%</div>
+                <div class="small text-muted">{{LABEL_UPDATED}}: %StarterModes.updated|30%</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <div class="panel panel-default">
+            <div class="panel-heading"><b>{{CARD_HINTS}}</b></div>
+            <div class="panel-body">
+                <div style="white-space:pre-line;max-height:220px;overflow:auto;font-size:13px;">%StarterHints.text|60%</div>
+                <div class="small text-muted">{{LABEL_HINTS_UPDATED}}: %StarterHints.updated|30%</div>
             </div>
         </div>
     </div>

@@ -10,6 +10,7 @@
  * Usage: php tests/installer_smoke.php
  */
 
+error_reporting(E_ALL & ~E_NOTICE);
 $errors = array();
 $db = array();
 $nextId = array();
@@ -65,9 +66,30 @@ function SQLSelect($query)
     return fake_select($query);
 }
 
+function SQLUpdate($table, $record)
+{
+    global $db;
+    $db[$table][$record['ID']] = $record;
+    return true;
+}
+
 function fake_select($query)
 {
     global $db;
+    if (preg_match('/^\s*SELECT\s+([\w\s,*]+?)\s+FROM\s+(\w+)\s+WHERE\s+(\w+)\s*=\s*\'(.*?)\'\s*$/i', $query, $m)) {
+        $table = $m[2];
+        $column = strtoupper($m[3]);
+        $value = str_replace("''", "'", $m[4]);
+        $result = array();
+        if (isset($db[$table])) {
+            foreach ($db[$table] as $row) {
+                if (isset($row[$column]) && (string)$row[$column] === $value) {
+                    $result[] = $row;
+                }
+            }
+        }
+        return $result;
+    }
     if (preg_match('/^\s*SELECT\s+([\w\s,*]+?)\s+FROM\s+(\w+)\s+WHERE\s+(\w+)\s*=\s*(\d+)\s*$/i', $query, $m)) {
         $table = $m[2];
         $column = strtoupper($m[3]);
@@ -130,6 +152,38 @@ $order = $kit->sortByRequirements(array('middle', 'base'));
 check($order === array('base', 'middle'), 'partial selection should stay ordered');
 $order = array_reverse($kit->sortByRequirements(array('base', 'middle', 'top')));
 check($order === array('top', 'middle', 'base'), 'uninstall should remove dependents first');
+
+// --- package update: additive scripts ------------------------------------
+$kit->config = array(
+    'installed' => array(
+        'demo' => array(
+            'version' => 1,
+            'installed_at' => '2026-01-01 00:00:00',
+            'entities' => array('classes' => array(), 'objects' => array(), 'scripts' => array(),
+                'text_files' => array(), 'scenes' => array(), 'layouts' => array())
+        )
+    )
+);
+$kit->packages = array(
+    'demo' => array(
+        'id' => 'demo',
+        'version' => 2,
+        'title_key' => 'STARTER_KIT_PKG_SCRIPTS_TITLE',
+        'description_key' => 'STARTER_KIT_PKG_SCRIPTS_DESC',
+        'scripts' => array(
+            array('title' => 'SmokeNewScript', 'code' => 'return 1;', 'description' => 'new')
+        )
+    )
+);
+$update = $kit->updatePackage('demo');
+check($update['ok'] === true, 'update should succeed');
+check($kit->config['installed']['demo']['version'] === 2, 'version should be bumped to 2');
+check(isset($kit->config['installed']['demo']['entities']['scripts']['SmokeNewScript']), 'new script tracked');
+check(count(table_rows('scripts')) === 1, 'new script row created');
+$again = $kit->updatePackage('demo');
+check($again['ok'] === true, 'second update should be a no-op');
+check(count(table_rows('scripts')) === 1, 'second update must not duplicate the script');
+$kit->texts = array('NAME' => 'STARTER_TEST_NAME');
 
 // --- scene: create -------------------------------------------------------
 $scene_record = $kit->createScene(array(

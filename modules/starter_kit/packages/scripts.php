@@ -17,8 +17,8 @@
 
 return array(
     'id' => 'scripts',
-    'version' => 1,
-    'requires' => array('basic_entities'),
+    'version' => 2,
+    'requires' => array('basic_entities', 'modes'),
     'title_key' => 'STARTER_KIT_PKG_SCRIPTS_TITLE',
     'description_key' => 'STARTER_KIT_PKG_SCRIPTS_DESC',
     'hints' => array(
@@ -42,7 +42,14 @@ return array(
         'PRESENCE_ON_DESC' => 'STARTER_KIT_TEXT_PRESENCE_ON_DESC',
         'PRESENCE_OFF_DESC' => 'STARTER_KIT_TEXT_PRESENCE_OFF_DESC',
         'SCHEDULE_MORNING_DESC' => 'STARTER_KIT_TEXT_SCHEDULE_MORNING_DESC',
-        'SCHEDULE_EVENING_DESC' => 'STARTER_KIT_TEXT_SCHEDULE_EVENING_DESC'
+        'SCHEDULE_EVENING_DESC' => 'STARTER_KIT_TEXT_SCHEDULE_EVENING_DESC',
+        'REPORT_DESC' => 'STARTER_KIT_TEXT_REPORT_DESC',
+        'REPORT_TITLE' => 'STARTER_KIT_TEXT_REPORT_TITLE',
+        'REPORT_LAMP' => 'STARTER_KIT_TEXT_REPORT_LAMP',
+        'REPORT_SENSOR' => 'STARTER_KIT_TEXT_REPORT_SENSOR',
+        'REPORT_THERMOSTAT' => 'STARTER_KIT_TEXT_REPORT_THERMOSTAT',
+        'REPORT_ROOM' => 'STARTER_KIT_TEXT_REPORT_ROOM',
+        'REPORT_MODES' => 'STARTER_KIT_TEXT_REPORT_MODES'
     ),
     'classes' => array(
         array(
@@ -327,6 +334,38 @@ CODE
             'code' => <<<'CODE'
 // Starter Kit: run the evening slot now, without waiting for the clock.
 callMethod('StarterSchedule.runSlot', array('slot' => 'evening'));
+CODE
+        ),
+        array(
+            'title' => 'SK_Report',
+            'description' => '{{REPORT_DESC}}',
+            'code' => <<<'CODE'
+// Starter Kit: write a short report to cms/texts/starter_kit_report.txt.
+// The file is visible in Control panel -> Text files and can be read by
+// other scripts with LoadFile().
+$lines = array();
+$lines[] = '{{REPORT_TITLE}}';
+$lines[] = date('Y-m-d H:i:s');
+$lines[] = '{{REPORT_LAMP}}: ' . gg('StarterLamp.status');
+$lines[] = '{{REPORT_SENSOR}}: ' . gg('StarterSensor.status');
+$lines[] = '{{REPORT_THERMOSTAT}}: ' . gg('StarterThermostat.status') .
+    ' (' . gg('StarterThermostat.currentTemp') . ' -> ' . gg('StarterThermostat.targetTemp') . ')';
+$lines[] = '{{REPORT_ROOM}}: ' . gg('StarterRoom.summary');
+$lines[] = '{{REPORT_MODES}}: ' . gg('StarterModes.summary');
+
+$dir = ROOT . 'cms/texts';
+if (!is_dir($dir)) {
+    @mkdir($dir, 0755, true);
+}
+$file = $dir . '/starter_kit_report.txt';
+$written = file_put_contents($file, implode("\n", $lines) . "\n");
+if ($written === false) {
+    sg('StarterScripts.lastAction', 'report: cannot write file');
+    return;
+}
+@chmod($file, 0644);
+sg('StarterScripts.lastAction', 'report: written at ' . date('H:i'));
+DebMes('StarterKit report written: ' . $file, 'starter_kit');
 CODE
         )
     )
