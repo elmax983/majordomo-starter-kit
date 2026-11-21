@@ -579,6 +579,20 @@ foreach ($packageData as $id => $package) {
             $errors[] = $id . ': ' . $key . ' ' . $package[$key] . ' is missing in lang/ru.php';
         }
     }
+    if (isset($package['hints']) && is_array($package['hints'])) {
+        foreach (array('shows', 'adapt') as $hintKey) {
+            if (!isset($package['hints'][$hintKey])) {
+                continue;
+            }
+            $langKey = $package['hints'][$hintKey];
+            if (!isset($dictionaries['default'][$langKey])) {
+                $errors[] = $id . ': hints.' . $hintKey . ' (' . $langKey . ') is missing in lang/default.php';
+            }
+            if (isset($dictionaries['ru']) && !isset($dictionaries['ru'][$langKey])) {
+                $errors[] = $id . ': hints.' . $hintKey . ' (' . $langKey . ') is missing in lang/ru.php';
+            }
+        }
+    }
     if (isset($package['texts']) && is_array($package['texts'])) {
         foreach ($package['texts'] as $token => $langKey) {
             if (!isset($dictionaries['default'][$langKey])) {
