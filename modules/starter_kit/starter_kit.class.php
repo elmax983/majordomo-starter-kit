@@ -267,6 +267,15 @@ class starter_kit extends module
                 }
             }
         }
+        if (isset($package['layouts']) && is_array($package['layouts'])) {
+            foreach ($package['layouts'] as $entity) {
+                $title = $this->resolveText($entity['title']);
+                $rec = SQLSelectOne("SELECT ID FROM layouts WHERE TITLE='" . DBSafe($title) . "'");
+                if ($rec['ID']) {
+                    $conflicts[] = $title;
+                }
+            }
+        }
         return $conflicts;
     }
 
@@ -322,7 +331,13 @@ class starter_kit extends module
         $record = array(
             'version' => isset($package['version']) ? (int)$package['version'] : 1,
             'installed_at' => date('Y-m-d H:i:s'),
-            'entities' => array('classes' => array(), 'objects' => array(), 'scripts' => array(), 'scenes' => array())
+            'entities' => array(
+                'classes' => array(),
+                'objects' => array(),
+                'scripts' => array(),
+                'scenes' => array(),
+                'layouts' => array()
+            )
         );
 
         // Classes first: objects may depend on them.
@@ -384,6 +399,22 @@ class starter_kit extends module
                     return $result;
                 }
                 $record['entities']['scenes'][$scene_record['title']] = $scene_record;
+            }
+        }
+
+        // Frontend pages (layouts) are last: they only display the entities above.
+        if (isset($package['layouts']) && is_array($package['layouts'])) {
+            foreach ($package['layouts'] as $entity) {
+                $layout_record = $this->createLayout($entity);
+                if ($layout_record === false) {
+                    $result['messages'][] = array(
+                        'CLASS' => 'danger',
+                        'TEXT' => $this->lang($package['title_key'], $package_id) . ': cannot create layout ' . $this->resolveText($entity['title'])
+                    );
+                    $this->rollbackRecord($record);
+                    return $result;
+                }
+                $record['entities']['layouts'][$layout_record['title']] = $layout_record;
             }
         }
 
@@ -613,18 +644,96 @@ class starter_kit extends module
     }
 
     /**
+     * Create a frontend page (layouts table, TYPE=html) and its cached HTML
+     * file in cms/layouts/<ID>.html. The layouts module includes that file.
+     *
+     * Expected package format:
+     *   'layouts' => array(
+     *       array(
+     *           'title' => '...', 'type' => 'html', 'priority' => 50,
+     *           'code' => '<div>... %Object.Property|10% ...</div>'
+     *       )
+     *   )
+     */
+    function createLayout($entity)
+    {
+        $title = $this->resolveText($entity['title']);
+        $code = $this->resolveText($entity['code']);
+        $type = isset($entity['type']) ? $entity['type'] : 'html';
+        $layout = array(
+            'TITLE' => $title,
+            'TYPE' => $type,
+            'PRIORITY' => isset($entity['priority']) ? (int)$entity['priority'] : 0,
+            'HIDDEN' => isset($entity['hidden']) ? (int)$entity['hidden'] : 0,
+            'CODE' => $code
+        );
+        $layout['ID'] = SQLInsert('layouts', $layout);
+        if (!$layout['ID']) {
+            return false;
+        }
+
+        $file = '';
+        if ($type == 'html') {
+            $file = 'cms/layouts/' . (int)$layout['ID'] . '.html';
+            if (!$this->writeLayoutFile($file, $code)) {
+                SQLExec("DELETE FROM layouts WHERE ID=" . (int)$layout['ID']);
+                return false;
+            }
+        }
+
+        return array(
+            'id' => (int)$layout['ID'],
+            'title' => $title,
+            'file' => $file,
+            'hash' => md5(trim($code))
+        );
+    }
+
+    function writeLayoutFile($relative, $code)
+    {
+        if (!defined('ROOT')) {
+            return false;
+        }
+        $path = ROOT . $relative;
+        $dir = dirname($path);
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0755, true);
+        }
+        $written = @file_put_contents($path, $code);
+        if ($written === false) {
+            return false;
+        }
+        @chmod($path, 0644);
+        return true;
+    }
+
+    function deleteLayoutFile($relative)
+    {
+        if (!defined('ROOT') || !is_string($relative) || strpos($relative, 'cms/layouts/') !== 0) {
+            return;
+        }
+        $path = ROOT . $relative;
+        if (is_file($path)) {
+            @unlink($path);
+        }
+    }
+
+    /**
      * Removes entities created during a failed install attempt.
      */
     function rollbackRecord($record)
     {
         $fake = array('entities' => $record['entities']);
-        foreach (array('scripts', 'scenes', 'objects', 'classes') as $type) {
+        foreach (array('scripts', 'layouts', 'scenes', 'objects', 'classes') as $type) {
             if (!isset($fake['entities'][$type])) {
                 continue;
             }
             foreach ($fake['entities'][$type] as $entity) {
                 if ($type == 'scripts') {
                     SQLExec("DELETE FROM scripts WHERE ID=" . (int)$entity['id']);
+                } elseif ($type == 'layouts') {
+                    SQLExec("DELETE FROM layouts WHERE ID=" . (int)$entity['id']);
+                    $this->deleteLayoutFile(isset($entity['file']) ? $entity['file'] : '');
                 } elseif ($type == 'scenes') {
                     $this->deleteSceneRaw($entity['id']);
                 } elseif ($type == 'objects') {
@@ -667,8 +776,8 @@ class starter_kit extends module
 
         $skipped = array();
 
-        // Reverse order: scripts, scenes, objects, classes.
-        foreach (array('scripts', 'scenes', 'objects', 'classes') as $type) {
+        // Reverse order: scripts, layouts, scenes, objects, classes.
+        foreach (array('scripts', 'layouts', 'scenes', 'objects', 'classes') as $type) {
             if (!isset($record['entities'][$type])) {
                 continue;
             }
@@ -676,6 +785,8 @@ class starter_kit extends module
                 $status = 'removed';
                 if ($type == 'scripts') {
                     $status = $this->removeScript($entity);
+                } elseif ($type == 'layouts') {
+                    $status = $this->removeLayout($entity);
                 } elseif ($type == 'scenes') {
                     $status = $this->removeScene($entity);
                 } elseif ($type == 'objects') {
@@ -692,7 +803,7 @@ class starter_kit extends module
         }
 
         $empty = true;
-        foreach (array('scripts', 'scenes', 'objects', 'classes') as $type) {
+        foreach (array('scripts', 'layouts', 'scenes', 'objects', 'classes') as $type) {
             if (isset($record['entities'][$type]) && count($record['entities'][$type])) {
                 $empty = false;
             }
@@ -726,6 +837,37 @@ class starter_kit extends module
             return 'skipped';
         }
         SQLExec("DELETE FROM scripts WHERE ID=" . (int)$entity['id']);
+        return 'removed';
+    }
+
+    /**
+     * Remove a layout page only if the row title and CODE are unchanged and
+     * the generated file (if any) still matches. The file is removed too.
+     */
+    function removeLayout($entity)
+    {
+        $rec = SQLSelectOne("SELECT * FROM layouts WHERE ID=" . (int)$entity['id']);
+        if (!$rec['ID']) {
+            $this->deleteLayoutFile(isset($entity['file']) ? $entity['file'] : '');
+            return 'removed';
+        }
+        if ($rec['TITLE'] != $entity['title']) {
+            return 'skipped';
+        }
+        if (md5(trim($rec['CODE'])) != $entity['hash']) {
+            return 'skipped'; // user edited the page in the admin panel
+        }
+        if (!empty($entity['file']) && defined('ROOT')) {
+            $path = ROOT . $entity['file'];
+            if (is_file($path)) {
+                $content = @file_get_contents($path);
+                if ($content === false || md5(trim($content)) != $entity['hash']) {
+                    return 'skipped'; // user edited the cached html file
+                }
+            }
+        }
+        SQLExec("DELETE FROM layouts WHERE ID=" . (int)$entity['id']);
+        $this->deleteLayoutFile(isset($entity['file']) ? $entity['file'] : '');
         return 'removed';
     }
 

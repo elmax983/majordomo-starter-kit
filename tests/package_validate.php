@@ -26,6 +26,8 @@ $objectClasses = array();
 $objectPackages = array();
 $sceneActions = array();
 $sceneTitles = array();
+$layoutRefs = array();
+$layoutTitles = array();
 
 // Standard classes shipped with the MajorDoMo schema. Package classes may
 // inherit from them without defining them.
@@ -67,7 +69,8 @@ function validate_collect_tokens($value, &$tokens)
 }
 
 function validate_entities($package, $type, &$errors, &$warnings, &$classTitles, &$objectTitles, &$scriptTitles,
-                           &$classParents, &$classMethods, &$objectClasses, &$objectPackages, &$sceneActions, &$sceneTitles)
+                           &$classParents, &$classMethods, &$objectClasses, &$objectPackages, &$sceneActions, &$sceneTitles,
+                           &$layoutRefs, &$layoutTitles)
 {
     global $coreClasses;
 
@@ -260,6 +263,43 @@ function validate_entities($package, $type, &$errors, &$warnings, &$classTitles,
                 }
             }
         }
+        return;
+    }
+
+    if ($type == 'layouts') {
+        foreach ($package[$type] as $entity) {
+            $title = isset($entity['title']) ? $entity['title'] : '';
+            if ($title == '') {
+                $errors[] = $package['id'] . ': layout without a title';
+                continue;
+            }
+            if (isset($layoutTitles[$title])) {
+                $errors[] = $package['id'] . ': duplicate layout title ' . $title;
+            }
+            $layoutTitles[$title] = 1;
+
+            $layoutType = isset($entity['type']) ? $entity['type'] : 'html';
+            if ($layoutType == 'html' && (!isset($entity['code']) || !is_string($entity['code']) || trim($entity['code']) == '')) {
+                $errors[] = $package['id'] . ': layout ' . $title . ' has no code';
+                continue;
+            }
+            if ($layoutType != 'html') {
+                $warnings[] = $package['id'] . ': layout ' . $title . ' uses type ' . $layoutType .
+                    '; only html pages are created with a cached file';
+            }
+            if (isset($entity['code']) && is_string($entity['code'])) {
+                if (preg_match_all('/%([A-Za-z0-9_\-]+)\.([A-Za-z0-9_\-]+)(?:\|\d+)?%/', $entity['code'], $matches, PREG_SET_ORDER)) {
+                    foreach ($matches as $match) {
+                        $layoutRefs[] = array(
+                            'package' => $package['id'],
+                            'layout' => $title,
+                            'object' => $match[1],
+                            'property' => $match[2]
+                        );
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -329,7 +369,7 @@ foreach ($files as $file) {
     }
 
     $tokens = array();
-    foreach (array('classes', 'objects', 'scripts', 'scenes') as $type) {
+    foreach (array('classes', 'objects', 'scripts', 'scenes', 'layouts') as $type) {
         if (isset($package[$type]) && is_array($package[$type])) {
             validate_collect_tokens($package[$type], $tokens);
         }
@@ -345,9 +385,10 @@ foreach ($files as $file) {
         }
     }
 
-    foreach (array('classes', 'objects', 'scripts', 'scenes') as $type) {
+    foreach (array('classes', 'objects', 'scripts', 'scenes', 'layouts') as $type) {
         validate_entities($package, $type, $errors, $warnings, $classTitles, $objectTitles, $scriptTitles,
-            $classParents, $classMethods, $objectClasses, $objectPackages, $sceneActions, $sceneTitles);
+            $classParents, $classMethods, $objectClasses, $objectPackages, $sceneActions, $sceneTitles,
+            $layoutRefs, $layoutTitles);
     }
 }
 
@@ -448,6 +489,22 @@ foreach ($sceneActions as $action) {
     }
 }
 
+// Layout placeholders %Object.Property% must point to objects from the package
+// itself or from its declared dependencies.
+foreach ($layoutRefs as $ref) {
+    if (!isset($objectClasses[$ref['object']])) {
+        $errors[] = $ref['package'] . ': layout ' . $ref['layout'] . ' uses unknown object ' .
+            $ref['object'] . '.' . $ref['property'];
+        continue;
+    }
+    $owner = isset($objectPackages[$ref['object']]) ? $objectPackages[$ref['object']] : '';
+    $allowed = package_requires($ref['package'], $packageData);
+    if ($owner != $ref['package'] && !isset($allowed[$owner])) {
+        $errors[] = $ref['package'] . ': layout ' . $ref['layout'] . ' uses object ' . $ref['object'] .
+            ' from package ' . $owner . ' which is not in requires';
+    }
+}
+
 // Language dictionaries: default.php is the source of truth, ru.php is the
 // primary translation kept in sync. Other languages may be partial and fall
 // back to English at runtime, so a missing key is only a warning there.
@@ -512,5 +569,5 @@ if (count($errors)) {
 }
 echo 'OK: ' . count($packageIds) . ' package(s), ' . count($classTitles) . ' class(es), ' .
     count($objectTitles) . ' object(s), ' . count($scriptTitles) . ' script(s), ' .
-    count($sceneTitles) . ' scene(s); ' .
+    count($sceneTitles) . ' scene(s), ' . count($layoutTitles) . ' layout(s); ' .
     count($warnings) . ' warning(s)' . PHP_EOL;

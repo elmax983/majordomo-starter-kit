@@ -17,11 +17,12 @@
   note on the module page.
 - Package `scripts`: `SK_Welcome`, `SK_ConnectionCheck`, presence simulation
   (`SK_Presence`), two-slot schedule (`SK_Schedule`), demo scripts.
+- Package `panel`: frontend page (`layouts` + `cms/layouts/<ID>.html`) with
+  live `%Object.Property|seconds%` cards.
 
 ## Next packages
 
-1. **Panel** — example home page blocks/widgets and a small layout.
-2. **Hints** — per-package “what it shows” and “how to adapt” notes.
+1. **Hints** — per-package “what it shows” and “how to adapt” notes.
 
 ## Later
 

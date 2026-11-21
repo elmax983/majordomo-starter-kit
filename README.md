@@ -58,8 +58,11 @@ sudo ./install.sh /var/www
   `SK_ConnectionCheck`, имитация присутствия `SK_PresenceOn` / `SK_PresenceOff`
   и расписание `SK_ScheduleMorning` / `SK_ScheduleEvening`; требует
   `basic_entities`.
+- **Panel** — вкладка на фронтенде с живыми карточками лампы, датчика,
+  термостата, комнаты, сцен и скриптов (`%Object.Property|10%`); требует
+  `basic_entities`, `scenes` и `scripts`.
 
-Планируются: блоки панели, подсказки.
+Планируются: подсказки.
 
 ## Безопасность
 

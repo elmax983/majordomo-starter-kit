@@ -81,12 +81,20 @@ return array(
                 )
             )
         )
+    ),
+    'layouts' => array(
+        array(
+            'title' => 'SK Example page',
+            'type' => 'html',
+            'priority' => 50,
+            'code' => '<div>%StarterExample.status|10%</div>'
+        )
     )
 );
 ```
 
-Classes are created before objects, objects before scripts, scenes last. List parent
-classes before their children.
+Classes are created before objects, objects before scripts, scenes next and frontend
+pages last. List parent classes before their children.
 
 `requires` lists package ids that must be installed first; the installer refuses
 to install a package with missing dependencies and the module page shows them.
@@ -102,6 +110,11 @@ Timed hooks (`onNewMinute`, `onNewHour`, `onNewDay`) are called by
 Scene elements of type `button` run `action_object.action_method` on click
 (`scenes` module: `ACTION_OBJECT` / `ACTION_METHOD`).
 
+`layouts` entries create a frontend page (`TYPE=html`) and its cached file
+`cms/layouts/<ID>.html`; the page appears as a tab on the main frontend. The
+code can use the regular `%Object.Property|seconds%` placeholders for live
+values. The file is removed together with the database row on uninstall.
+
 ## Safety rules
 
 1. Install aborts before creating anything if an entity with the same title
@@ -112,9 +125,11 @@ Scene elements of type `button` run `action_object.action_method` on click
 4. Classes still used by objects or subclasses are never deleted.
 5. Scenes are removed only when their titles, element sets, button labels and
    actions are unchanged.
-6. A package cannot be uninstalled while another installed package requires it;
+6. Frontend pages are removed only when the database row and the cached
+   `cms/layouts/<ID>.html` file are unchanged; manually edited pages are kept.
+7. A package cannot be uninstalled while another installed package requires it;
    uninstall the dependent packages first.
-7. Module uninstall (from the module list) only removes the module registry
+8. Module uninstall (from the module list) only removes the module registry
    entry; demo packages should be removed explicitly from the module page first.
 
 ## Current packages
@@ -131,6 +146,8 @@ Scene elements of type `button` run `action_object.action_method` on click
 - `scripts` — welcome message, offline health check, presence simulation and a
   two-slot schedule (`SK_Scripts`, `SK_Presence`, `SK_Schedule`); requires
   `basic_entities`.
+- `panel` — a frontend tab with live cards for the lamp, sensor, thermostat,
+  room, scenes and scripts; requires `basic_entities`, `scenes`, `scripts`.
 
 `SK_Presence` and `SK_Schedule` are `Timer` subclasses, so their
 `onNewMinute` / `onNewDay` methods start receiving calls after `cycle_main`
