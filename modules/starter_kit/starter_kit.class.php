@@ -159,6 +159,15 @@ class starter_kit extends module
                 );
             }
 
+            if ($mode == 'install') {
+                // Install dependencies first, even if the user selected the
+                // packages in a different order.
+                $selected = $this->sortByRequirements($selected);
+            } elseif ($mode == 'uninstall') {
+                // Remove dependent packages before their dependencies.
+                $selected = array_reverse($this->sortByRequirements($selected));
+            }
+
             foreach ($selected as $package_id) {
                 if ($mode == 'install') {
                     $result = $this->installPackage($package_id);
@@ -277,6 +286,36 @@ class starter_kit extends module
             }
         }
         return $conflicts;
+    }
+
+    /**
+     * Order selected packages so that dependencies are installed first.
+     * Packages that are not selected are not added: a missing dependency is
+     * reported by installPackage().
+     */
+    function sortByRequirements($ids)
+    {
+        $sorted = array();
+        $visiting = array();
+        $visit = function ($id) use (&$visit, &$sorted, &$visiting, &$ids) {
+            if (isset($sorted[$id]) || isset($visiting[$id])) {
+                return;
+            }
+            $visiting[$id] = 1;
+            if (isset($this->packages[$id]['requires']) && is_array($this->packages[$id]['requires'])) {
+                foreach ($this->packages[$id]['requires'] as $required_id) {
+                    if (in_array($required_id, $ids, true)) {
+                        $visit($required_id);
+                    }
+                }
+            }
+            unset($visiting[$id]);
+            $sorted[$id] = 1;
+        };
+        foreach ($ids as $id) {
+            $visit($id);
+        }
+        return array_keys($sorted);
     }
 
     function installPackage($package_id)

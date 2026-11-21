@@ -98,6 +98,8 @@ pages last. List parent classes before their children.
 
 `requires` lists package ids that must be installed first; the installer refuses
 to install a package with missing dependencies and the module page shows them.
+When several packages are selected at once, they are installed in dependency
+order and uninstalled in reverse order.
 
 `{{TOKEN}}` placeholders are replaced at install time from the package `texts`
 map (`TOKEN => LANG_KEY`), so generated entity titles, descriptions and code
@@ -157,8 +159,14 @@ restarts (the module does not restart cycles on install).
 
 ```sh
 php tests/package_validate.php
+php tests/installer_smoke.php
 ```
 
 The validator needs only PHP CLI: it checks the package format, method and
 script syntax, `onchange` targets, parent classes, `{{TOKEN}}` replacements,
-dependencies and the language dictionaries.
+dependencies, scene actions and layout placeholders.
+
+The smoke test stubs SQL and `ROOT` to exercise scene and layout creation and
+safe removal (unchanged entities are removed, edited ones are kept). It does not
+check the real database schema: run a full install on a test stand before
+release.
