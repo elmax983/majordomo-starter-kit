@@ -1,0 +1,35 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lint PHP files
+        run: |
+          find modules tests -name '*.php' -print0 | xargs -0 -n1 php -l
+      - name: Validate packages
+        run: php tests/package_validate.php
+      - name: Installer smoke test
+        run: php tests/installer_smoke.php
+
+  release:
+    needs: checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --title "MajorDoMo Starter Kit $GITHUB_REF_NAME" \
+            --notes-file RELEASES.md

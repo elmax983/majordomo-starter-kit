@@ -82,7 +82,16 @@ changes.
    git push origin v1.0.0
    ```
 
-4. Create a GitHub release from the tag and paste the matching section above.
+4. Push the tag. The GitHub Actions workflow `.github/workflows/release.yml`
+   runs the checks and creates the release from `RELEASES.md` automatically:
+
+   ```sh
+   git push origin main
+   git push origin v1.0.0
+   ```
+
+If the workflow is unavailable, create the release manually from the tag and
+paste the matching section above.
 
 ## Versioning rules
 
