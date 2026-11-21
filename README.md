@@ -54,8 +54,12 @@ sudo ./install.sh /var/www
 - **Scenes** — четыре сцены (Доброе утро, Доброй ночи, Ушли, Пришли) на
   виртуальных устройствах, объект `StarterScenes` и класс `SK_Scene`. Кнопки
   сцен вызывают методы объекта; набор требует `basic_entities`.
+- **Scripts** — приветствие `SK_Welcome`, офлайн-проверка
+  `SK_ConnectionCheck`, имитация присутствия `SK_PresenceOn` / `SK_PresenceOff`
+  и расписание `SK_ScheduleMorning` / `SK_ScheduleEvening`; требует
+  `basic_entities`.
 
-Планируются: скрипты, блоки панели, подсказки.
+Планируются: блоки панели, подсказки.
 
 ## Безопасность
 

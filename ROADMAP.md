@@ -15,13 +15,13 @@
   `StarterScenes`, scene buttons via `ACTION_OBJECT` / `ACTION_METHOD`.
 - `requires` dependencies between packages with a check in the installer and a
   note on the module page.
+- Package `scripts`: `SK_Welcome`, `SK_ConnectionCheck`, presence simulation
+  (`SK_Presence`), two-slot schedule (`SK_Schedule`), demo scripts.
 
 ## Next packages
 
-1. **Scripts** — welcome message, connection check, presence simulation,
-   simple schedule; with comments and hints.
-2. **Panel** — example home page blocks/widgets and a small layout.
-3. **Hints** — per-package “what it shows” and “how to adapt” notes.
+1. **Panel** — example home page blocks/widgets and a small layout.
+2. **Hints** — per-package “what it shows” and “how to adapt” notes.
 
 ## Later
 

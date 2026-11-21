@@ -128,6 +128,13 @@ Scene elements of type `button` run `action_object.action_method` on click
   `SK_Button` / `SK_Thermostat`, `SK_Room`, demo objects and `SK_EntitiesDemo`.
 - `scenes` — four scene pages (Good morning, Good night, Away, Home) driven by
   `SK_Scene` / `StarterScenes`; requires `basic_entities`.
+- `scripts` — welcome message, offline health check, presence simulation and a
+  two-slot schedule (`SK_Scripts`, `SK_Presence`, `SK_Schedule`); requires
+  `basic_entities`.
+
+`SK_Presence` and `SK_Schedule` are `Timer` subclasses, so their
+`onNewMinute` / `onNewDay` methods start receiving calls after `cycle_main`
+restarts (the module does not restart cycles on install).
 
 ## Tests
 
