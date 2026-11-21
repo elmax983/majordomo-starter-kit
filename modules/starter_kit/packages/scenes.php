@@ -98,6 +98,8 @@ CODE
                 ,
                 'movieNight' => <<<'CODE'
 // Scene "Movie night": dim light and a comfortable temperature.
+callMethod('StarterModes.setMode', array('mode' => 'vacation', 'active' => 0));
+callMethod('StarterModes.setMode', array('mode' => 'guest', 'active' => 0));
 callMethod('StarterLamp.setBrightness', array('level' => (int)$this->getProperty('movieLevel')));
 sg('StarterThermostat.mode', 'heat');
 sg('StarterThermostat.targetTemp', (float)$this->getProperty('dayTarget'));
@@ -112,6 +114,7 @@ CODE
 // Scene "Guest": somebody is visiting. Guest mode handles the devices,
 // the scene only sets it and records the active scene.
 callMethod('StarterModes.setMode', array('mode' => 'guest', 'active' => 1));
+callMethod('StarterModes.setMode', array('mode' => 'vacation', 'active' => 0));
 callMethod('StarterLamp.setBrightness', array('level' => (int)$this->getProperty('guestLevel')));
 sg('StarterThermostat.targetTemp', (float)$this->getProperty('guestTarget'));
 
