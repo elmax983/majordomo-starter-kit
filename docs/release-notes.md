@@ -1,9 +1,8 @@
-## Starter Kit v1.0.0
+## Starter Kit v0.1.2 (in development)
 
 ### Русский
 
-Первый публичный релиз Starter Kit — необязательного модуля MajorDoMo, который
-устанавливает готовые примеры в свежую систему.
+Текущая версия в разработке. Публичного релиза пока нет.
 
 **Что внутри**
 
@@ -16,24 +15,18 @@
 - Версии пакетов и аддитивные обновления.
 - Локализация RU/EN без изменений словарей ядра.
 - Статический валидатор пакетов и smoke-тест установщика.
-- Двуязычные README и гайд для начинающих со схемами интерфейса.
+- Двуязычные README и гайд для начинающих; схемы интерфейса на русском и
+  английском.
 
 **Версии пакетов:** `basic_entities` 1, `clock_chime` 1, `sun_times` 1,
 `modes` 1, `scenes` 2, `scripts` 2, `hints` 1, `panel` 2.
-
-**Обновление**
-
-Установите модуль поверх старой копии (`install.sh`), откройте страницу модуля и
-нажмите **«Обновить выбранные»**. Обновление добавляет новые сущности и не
-перезаписывает изменённые.
 
 **Требования:** MajorDoMo alpha, PHP 7.4/8.x, MariaDB/MySQL. Ядро и схема БД не
 изменяются.
 
 ### English
 
-First public release of Starter Kit, an optional MajorDoMo module that installs
-ready-made examples into a fresh system.
+Current development version. There is no public release yet.
 
 **Highlights**
 
@@ -46,16 +39,10 @@ ready-made examples into a fresh system.
 - Package versions and additive updates.
 - RU/EN localization without touching core dictionaries.
 - Static package validator and installer smoke test.
-- Bilingual READMEs and a beginner guide with UI mockups.
+- Bilingual READMEs and a beginner guide with Russian and English UI mockups.
 
 **Package versions:** `basic_entities` 1, `clock_chime` 1, `sun_times` 1,
 `modes` 1, `scenes` 2, `scripts` 2, `hints` 1, `panel` 2.
-
-**Upgrade**
-
-Install the module over the old copy (`install.sh`), open the module page and
-press **Update selected**. Updates are additive and never overwrite edited
-entities.
 
 **Requirements:** MajorDoMo alpha, PHP 7.4/8.x, MariaDB/MySQL. No core or schema
 changes.

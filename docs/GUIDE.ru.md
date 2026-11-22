@@ -38,7 +38,7 @@ sudo ./install.sh /var/www
 
 Откройте **Панель управления → Модули → Starter Kit**.
 
-![Страница модуля](images/module-page.svg)
+![Страница модуля](images/module-page.ru.svg)
 
 На странице видно:
 
@@ -77,7 +77,7 @@ Clock and chime и Time and sun можно добавить отдельно —
 
 Раздел **Режимы работы** (`OperationalModes`) заполнен тремя объектами:
 
-![Режимы работы](images/modes.svg)
+![Режимы работы](images/modes.ru.svg)
 
 - **Debug** — помечает себя активным и пишет в лог.
 - **Гости** — выключает свет и держит комфортное отопление.
@@ -94,7 +94,7 @@ Clock and chime и Time and sun можно добавить отдельно —
 
 Откройте главную страницу MajorDoMo. Появится вкладка **«Панель Starter»**:
 
-![Панель](images/panel.svg)
+![Панель](images/panel.ru.svg)
 
 Карточки используют штатные подстановки `%Object.Property|10%`: значения
 обновляются через websockets или по AJAX, если websockets отключены.

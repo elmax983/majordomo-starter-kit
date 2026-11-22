@@ -2,9 +2,10 @@
 
 All notable changes to MajorDoMo Starter Kit.
 
-## 1.0.0 — 2026-11-21
+## 0.1.2 — in development (2026-11-22)
 
-First public release of the complete example set.
+Current development version. Not released yet: the version grows while the
+example set is being polished.
 
 ### Module
 
@@ -16,6 +17,7 @@ First public release of the complete example set.
 - Class display templates, text files, scenes and frontend layouts.
 - Module-local dictionaries (`lang/default.php`, `lang/ru.php`).
 - Static package validator and installer smoke test.
+- Bilingual READMEs and a beginner guide with Russian and English UI mockups.
 
 ### Packages
 

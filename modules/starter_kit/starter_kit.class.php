@@ -35,7 +35,7 @@ class starter_kit extends module
     function __construct()
     {
         $this->name = 'starter_kit';
-        $this->version = '1.0.0';
+        $this->version = '0.1.2';
         $this->loadLanguage();
         $this->title = '<#LANG_STARTER_KIT_TITLE#>';
         $this->module_category = '<#LANG_SECTION_SYSTEM#>';
