@@ -2,6 +2,8 @@
 
 **English** | [Русский](README.ru.md)
 
+**Module version: 0.1.2 (in development).**
+
 Optional MajorDoMo module that installs demo packages into a fresh system.
 
 ## Principles

@@ -2,6 +2,8 @@
 
 [Русский](README.md) | **English**
 
+**Module version: 0.1.2 (in development).**
+
 Optional MajorDoMo module that installs ready-made example packages into a fresh
 system: classes, objects, properties, methods, scripts, scenes, working modes,
 frontend pages and text files.
